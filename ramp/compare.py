@@ -31,6 +31,15 @@ CLOSE_USERS = {"Kevin": "Kevin Manuel", "Daniel": "Daniel Jenkins", "Solomon": "
                "Oliver": "Oliver English", "Tyler": "Tyler Johnson"}
 
 
+def sales_tracker_cash(snap, closer, s, e):
+    import csv
+    total = 0.0
+    for r in csv.DictReader(open(snap / "sales_tracker_inputs.csv")):
+        if r["Closer"] == closer and s <= d(r["Date"]) <= e:
+            total += float(r["Cash Collected"] or 0)
+    return total
+
+
 def window(go_live, k, through, days=None):
     s = add_months(go_live, k - 1)
     e = add_months(go_live, k) - timedelta(days=1)
@@ -55,8 +64,11 @@ def measure(name, p, data, close_windows, k, days=None):
         eod["showed"] = capped
     else:
         sched = close_windows.get(name, {}).get(str(k) if days is None else f"{k}@{days}")
-    tracked = s >= d("2026-05-01") and name != "Chris"
-    cash = data.cash(p["tracker_id"], s, e) if tracked else eod["cash_collected"]
+    tracked = s >= d("2026-05-01")
+    if name == "Chris":  # former rep: the 2M tracker API has no daily rows for him, so read the Sales Tracker directly
+        cash, tracked = sales_tracker_cash(data.snap, "Chris", s, e), True
+    else:
+        cash = data.cash(p["tracker_id"], s, e) if tracked else eod["cash_collected"]
     weekdays = sum(1 for i in range((e - s).days + 1) if (s + timedelta(days=i)).weekday() < 5)
     return {
         "name": name, "start": s, "end": e, "days": (e - s).days + 1, "total_days": total,
@@ -151,35 +163,53 @@ if __name__ == "__main__":
     main()
 
 
-def slack_digest(snap):
-    """Monday digest: each current ramp person against everyone else at the same point of the same ramp month."""
+def digest_tables(snap):
+    """One table per (ramp month, day reached): each current rep against past reps at the same day."""
     data = Data(snap)
     people = {p["name"]: p for p in json.loads((ROOT / "config/roster.json").read_text())["people"]}
     close_windows = json.loads((snap / "close_discovery_windows.json").read_text())
-    out = [f"*Ramp weekly digest · data through {data.through:%a %-m/%-d}*", ""]
-    for k in (1, 2, 3):
-        cur = []
-        for n in CURRENT:
+    by_month = {}
+    for n in CURRENT:
+        for k in (1, 2, 3):
             m = measure(n, people[n], data, close_windows, k)
             if m and m["days"] < m["total_days"]:
-                cur.append(m)
-        if not cur:
-            continue
-        day = min(m["days"] for m in cur)
-        out.append(f"*Ramp month {k}: everyone at day {day}*")
+                by_month.setdefault(k, []).append(m)
+    # Reps within 3 days of each other share a table at the earlier day; otherwise each gets its own.
+    groups = {}
+    for k, ms in by_month.items():
+        for m in sorted(ms, key=lambda x: x["days"]):
+            key = next((g for g in groups if g[0] == k and m["days"] - g[1] <= 3), (k, m["days"]))
+            groups.setdefault(key, []).append(m["name"])
+    tables = []
+    for (k, day), names in sorted(groups.items()):
+        cur = [measure(n, people[n], data, close_windows, k, day) for n in names]
+        ramping = [m["name"] for m in by_month[k]]
+        past = [m for n in PAST if n not in ramping
+                and (m := measure(n, people[n], data, close_windows, k, day)) and m["days"] == day
+                and (m["live"] or m["cash"])]
+        e = EXPECT[k]
+        pace = {"sched": e["sched"] * day / 30, "live": e["live"] * day / 30, "closes": e["closes"] * day / 30,
+                "cash": e["cash"] * day / 30, "ctc": e["ctc"]}
+        tables.append({"month": k, "day": day, "current": cur, "past": past, "pace": pace,
+                       "full_target": e, "through": data.through})
+    return tables
+
+
+def slack_digest(snap):
+    out = []
+    for t in digest_tables(snap):
+        who = " & ".join(c["name"] for c in t["current"])
+        out.append(f"*Ramp month {t['month']}, day {t['day']}: {who} vs everyone at day {t['day']}*")
         out.append("```")
         out.append(f"{'':<9}{'Live':>8}{'Booked':>8}{'Showed':>8}{'Closes':>8}{'Cash':>10}{'CTC':>6}")
-        rows = [measure(n, people[n], data, close_windows, k, day) for n in [m["name"] for m in cur]]
-        rows += [m for n in PAST if n not in [c["name"] for c in cur]
-                 and (m := measure(n, people[n], data, close_windows, k, day)) and m["days"] == day and m["cash_src"] == "tracker"]
-        for m in rows:
-            star = "*" if m["name"] in [c["name"] for c in cur] else " "
+        for m in t["current"] + t["past"]:
+            star = "*" if m in t["current"] else " "
             booked = "–" if m["sched"] is None else m["sched"]
             out.append(f"{m['name'] + star:<9}{m['start'].strftime('%-m/%-d'):>8}{booked:>8}{int(m['live']):>8}{int(m['closes']):>8}{money(m['cash']):>10}{pct(m['ctc']):>6}")
-        e = EXPECT[k]
-        out.append(f"{'Pace':<9}{'':>8}{round(e['sched'] * day / 30):>8}{round(e['live'] * day / 30):>8}{round(e['closes'] * day / 30):>8}{money(e['cash'] * day / 30):>10}{pct(e['ctc']):>6}")
+        pc = t["pace"]
+        out.append(f"{'Pace':<9}{'':>8}{round(pc['sched']):>8}{round(pc['live']):>8}{round(pc['closes']):>8}{money(pc['cash']):>10}{pct(pc['ctc']):>6}")
         out.append("```")
-        out.append("_* = ramping now. Pace = month expectation × day ÷ 30. Showed/closes from EODs; cash from the 2M tracker._")
         out.append("")
-    out.append("Full-month comparison for every ramp month, and the check of the Weekly/Monthly Report numbers: `outputs/<date>/ramp_comparison.md`, `data_check.md`.")
+    out.append("_* = ramping now. Pace = where you'd be at this day to hit the month's expectation (month target × day ÷ 30). "
+               "Cash lands late in the month, so being under cash pace mid-month is normal; compare against the others at the same day._")
     return "\n".join(out)

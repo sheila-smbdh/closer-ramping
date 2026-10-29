@@ -40,7 +40,6 @@ Your value → verified value. Verified cash is from the 2M tracker over the ram
 | Julien | M2 | Closes | 11 | 10 |  |
 | Julien | M2 | Cash | $185.0K | $207.5K |  |
 | Chris | M2 | Closes | 3 | 1 | EOD filed on 78% of weekdays |
-| Chris | M2 | Cash | $51.0K | $18.0K | no daily tracker data; EOD cash |
 | Nick | M2 | Booked | 65 | 73 | Close counts every 45-min discovery booking |
 | Nick | M2 | Live | 46 | 29 | EOD filed on 55% of weekdays |
 | Nick | M2 | Offers | 36 | 20 | EOD filed on 55% of weekdays |
