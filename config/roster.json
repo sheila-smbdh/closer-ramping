@@ -1,0 +1,28 @@
+{
+  "_note": "Corrected dates from the 2026-10-29 date check. Go-live = first 45-min Discovery call held. Source of truth for inputs is the Roster tab; this file mirrors it plus lookup keys.",
+  "people": [
+    {"name": "Kevin", "track": "new_hire_closer", "status": "active", "org_start": "2026-07-22", "go_live": "2026-08-06", "close_user": "Kevin Manuel", "tracker_id": "kevin", "eod_names": ["Kevin", "Kevin Manuel"], "cohort": "kds"},
+    {"name": "Daniel", "track": "new_hire_closer", "status": "watch", "org_start": "2026-07-27", "go_live": "2026-08-06", "close_user": "Daniel Jenkins", "tracker_id": "daniel", "eod_names": ["Daniel", "Daniel Jenkins"], "cohort": "kds"},
+    {"name": "Solomon", "track": "new_hire_closer", "status": "active", "org_start": "2026-08-03", "go_live": "2026-08-13", "close_user": "Solomon House", "tracker_id": "solomon", "eod_names": ["Solomon", "Solomon House"], "cohort": "kds"},
+    {"name": "Oliver", "track": "new_hire_closer", "status": "active", "org_start": "2026-09-25", "go_live": "2026-10-15", "close_user": "Oliver English", "tracker_id": "oliver", "eod_names": ["Oliver English"], "cohort": "ot"},
+    {"name": "Tyler", "track": "new_hire_closer", "status": "active", "org_start": "2026-09-25", "go_live": "2026-10-14", "close_user": "Tyler Johnson", "tracker_id": "tyler", "eod_names": ["Tyler Johnson"], "cohort": "ot"},
+    {"name": "Quinn", "track": "setter_promote", "status": "active", "ascension_start": "2026-07-20", "first_self_set": "2026-08-07", "go_live": null, "close_user": "Quinn Donelan", "eod_names": ["Quinn"], "cohort": "ydq",
+     "time_off": [["2026-09-04", "2026-09-04"], ["2026-10-03", "2026-10-10"], ["2026-10-18", "2026-10-23"]]},
+    {"name": "Yobani", "track": "setter_promote", "status": "active", "ascension_start": "2026-09-01", "first_self_set": "2026-09-09", "go_live": null, "close_user": "Yobani Mendoza", "eod_names": ["Yobani", "Yobani Mendoza"], "cohort": "ydq", "time_off": []},
+    {"name": "Dave", "track": "setter_promote", "status": "active", "ascension_start": "2026-09-08", "first_self_set": "2026-09-25", "go_live": null, "close_user": "David Martin", "eod_names": ["David Martin"], "cohort": "ydq", "time_off": []},
+    {"name": "Harry", "track": "new_hire_closer", "status": "ramped", "org_start": "2026-06-15", "go_live": "2026-07-06", "tracker_id": "harry", "eod_names": ["Harry", "Harry Whyte"]},
+    {"name": "Nick", "track": "new_hire_closer", "status": "ramped", "org_start": "2026-04-20", "go_live": "2026-05-13", "tracker_id": "nick", "eod_names": ["Nick", "Nick Vaughan"]},
+    {"name": "Julien", "track": "new_hire_closer", "status": "watch", "org_start": "2026-04-26", "go_live": "2026-05-11", "tracker_id": "julien", "eod_names": ["Julien", "Julien Breteau"]},
+    {"name": "Chris", "track": "new_hire_closer", "status": "out", "org_start": "2026-06-19", "go_live": "2026-07-10", "tracker_id": "chris", "eod_names": ["Chris"]},
+    {"name": "Avery", "track": "new_hire_closer", "status": "out", "org_start": "2026-08-31", "go_live": null, "note": "Never went live; let go 9/16"},
+    {"name": "Owen", "track": "new_hire_closer", "status": "ramped", "org_start": "2025-04-22", "go_live": "2025-05-05", "tracker_id": "owen", "eod_names": ["Owen", "Owen Henderson"], "comparison_only": true},
+    {"name": "Jay Z", "track": "setter_promote", "status": "ramped", "first_self_set": null, "go_live": "2024-07-25", "eod_names": ["Jay Z", "JayZ", "Jordan Zadrozny"], "comparison_only": true},
+    {"name": "EJ", "track": "setter_promote", "status": "out", "first_self_set": "2025-12-01", "go_live": "2026-03-04", "eod_names": ["EJ"], "comparison_only": true},
+    {"name": "Omar", "track": "setter_promote", "status": "ramped", "first_self_set": "2026-03-18", "go_live": "2026-06-08", "tracker_id": "omar", "eod_names": ["Omar", "Omar Kaddoura"], "comparison_only": true}
+  ],
+  "cohorts": {
+    "kds": {"label": "Daniel / Kevin / Solomon", "members": ["Daniel", "Kevin", "Solomon"]},
+    "ydq": {"label": "Yobani / Dave / Quinn", "members": ["Yobani", "Dave", "Quinn"]},
+    "ot": {"label": "Oliver / Tyler", "members": ["Oliver", "Tyler"]}
+  }
+}
