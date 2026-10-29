@@ -1,38 +1,43 @@
-*New hire ramp: weekly digest* _(data through Wed 10/28)_
+*Ramp weekly digest · data through Wed 10/28*
 
-*New hire closers*
+*Ramp month 1: everyone at day 14*
 ```
-Name    Stage          Day      Cash     Pace*  Showed Closes   CTC  Booked
-Kevin   Ramp M3      23/31    $72.0K   $148.4K      28      4   14%      55
-Daniel  Ramp M3      23/31    $17.5K   $148.4K      23      1    4%      53
-Solomon Ramp M3      16/31    $56.0K   $103.2K      23      3   13%      43
-Oliver  Ramp M1      14/31     $0.0K    $45.2K      23      0    0%      26
-Tyler   Ramp M1      15/31     $0.0K    $48.4K      22      0    0%      46
+             Live  Booked  Showed  Closes      Cash   CTC
+Oliver*     10/15      18      10       0     $0.0K    0%
+Tyler*      10/14      31      11       0     $0.0K    0%
+Nick         5/13      36      20       2    $54.0K   10%
+Julien       5/11      28      20       0     $0.0K    0%
+Harry         7/6      43      24       0     $0.0K    0%
+Kevin         8/6      31      18       0     $0.0K    0%
+Daniel        8/6      27      18       1    $20.0K    6%
+Solomon      8/13      41      27       0     $0.0K    0%
+Pace                   28      21       3    $46.7K   16%
 ```
-_*Pace = target × days elapsed ÷ days in ramp month (straight line; cash actually lands late in a month). Booked = Close discovery calls held + already on the calendar this ramp month._
+_* = ramping now. Pace = month expectation × day ÷ 30. Showed/closes from EODs; cash from the 2M tracker._
 
-*Ramp history and calls coming up*
-• *Kevin*: M1 $88.0K; M2 $170.5K (throttled); M3 $72.0K. M3 needs $200K and 25% CTC by Thu 11/5.
-• *Daniel*: M1 $70.0K; M2 $157.0K (throttled); M3 $17.5K. M3 needs $200K and 25% CTC by Thu 11/5.
-• *Solomon*: M1 $104.5K; M2 $171.0K (open); M3 $56.0K. M3 needs $200K and 25% CTC by Thu 11/12.
-• *Oliver*: M1 ends Sat 11/14. $0.0K so far; floor $75K, open path at $100K (flag $95K–$99.9K to Sheila).
-• *Tyler*: M1 ends Fri 11/13. $0.0K so far; floor $75K, open path at $100K (flag $95K–$99.9K to Sheila).
-
-*Setter promotes (pre-ramp, self-set)*
+*Ramp month 3: everyone at day 16*
 ```
-Name    Month  Window            Calls  Target  Showed Closes
-Quinn   PR1    8/7–9/7              18      20       4      1
-Quinn   PR2    9/8–10/15             3      40       2      1
-Yobani  PR1    9/9–10/8             12      20      15      1
-Yobani  PR2    10/9–11/8           1+2      40       1      1
-Dave    PR1    9/25–10/24            6      20       3      0
-Dave    PR2    10/25–11/24         0+2      40       0      0
+             Live  Booked  Showed  Closes      Cash   CTC
+Kevin*       10/6      32      22       2    $42.0K    9%
+Daniel*      10/6      30      14       0     $0.0K    0%
+Solomon*    10/13      31      23       3    $56.0K   13%
+Nick         7/13      56      30       4   $116.5K   13%
+Julien       7/11      46      31       1    $20.0K    3%
+Harry         9/6      61      18       3    $55.5K   17%
+Pace                   40      30       7   $106.7K   25%
 ```
-_Calls = Close discovery calls held (+ booked ahead). Quinn’s windows skip his time off. Showed/closes come from EOD reports, which these three rarely file._
+_* = ramping now. Pace = month expectation × day ÷ 30. Showed/closes from EODs; cash from the 2M tracker._
 
-*Data checks*
-• Oliver: EOD says 30 calls scheduled in the last 7 days, Close shows 10 discovery calls. Setter calls are likely being logged as closer calls (Jay flagged this to Tyler 10/23), which inflates shows and the 5th/10th call count.
-• Tyler: EOD says 36 calls scheduled in the last 7 days, Close shows 14 discovery calls. Setter calls are likely being logged as closer calls (Jay flagged this to Tyler 10/23), which inflates shows and the 5th/10th call count.
-• Kevin, October to date: Sales Tracker says 38 live calls, EOD says 32. Using EOD.
-• Quinn, Yobani and Dave rarely file closer EODs, so their show rate and CTC aren’t reliable yet.
-• Daniel’s ramp month 1 (8/6–9/5) comes out at $70.0K, under the $75K floor, when counted from his first held call. Worth a look at whether the floor was applied.
+Full-month comparison for every ramp month, and the check of the Weekly/Monthly Report numbers: `outputs/<date>/ramp_comparison.md`, `data_check.md`.
+
+*Setter promotes (self-set closer calls, Close)*
+```
+        Month  Window          Calls  Target
+Quinn   PR1    8/7–9/7            18      20
+Quinn   PR2    9/8–11/23         3+4      40
+Yobani  PR1    9/9–10/8           12      20
+Yobani  PR2    10/9–11/8         1+2      40
+Dave    PR1    9/25–10/24          6      20
+Dave    PR2    10/25–11/24       0+2      40
+```
+_Calls = held (+ already booked). Windows skip time off._

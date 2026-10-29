@@ -1,0 +1,15 @@
+{
+  "_note": "Jay's feedback items per rep. status: open | fixed | watch. Source = where it was said. Jay never wrote mock feedback in the review sheets; these come from Granola notes of leadership meetings and the reps' self-reviews.",
+  "Oliver": [
+    {"date": "2026-10-06", "category": "Price", "issue": "rebate explained wrong", "source": "Jay, Sales EOD 10/6 (Granola a91c73d6)", "status": "open"},
+    {"date": "2026-10-06", "category": "Objection", "issue": "success-rate and incentive objections", "source": "Jay drilled on mock 10/6; Oliver self-review Yellow", "status": "open"},
+    {"date": "2026-10-07", "category": "Delivery", "issue": "talking fast, wordy questions, too many check-ins", "source": "Oliver mock self-review; repeated in his 10/19 live-call self-review", "status": "open"},
+    {"date": "2026-10-06", "category": "Length", "issue": "call ran long", "source": "Jay, Sales EOD 10/6", "status": "open"}
+  ],
+  "Tyler": [
+    {"date": "2026-10-05", "category": "Discovery", "issue": "more personality in discovery", "source": "Jay, Sales EOD 10/5 (Granola 49b6ffbe)", "status": "open"},
+    {"date": "2026-10-13", "category": "Delivery", "issue": "stiff, not conversational", "source": "Jay, Sales L10 10/13 (Granola fce17f3e)", "status": "open"},
+    {"date": "2026-10-05", "category": "Pitch", "issue": "pitch needed cleanup", "source": "Jay, Sales EOD 10/5", "status": "open"},
+    {"date": "2026-10-06", "category": "Objection", "issue": "standard objections, call length", "source": "Jay, Sales EOD 10/6", "status": "open"}
+  ]
+}

@@ -1,0 +1,30 @@
+{
+ "_source": "Close aggregate, meetings duration=2700s owned by the rep, status in completed/declined-by-lead/upcoming/in-progress, per ramp-month window from go-live. Pulled 2026-10-29.",
+ "Harry": {
+  "1": 94,
+  "2": 89,
+  "3": 104,
+  "1@14": 43,
+  "3@16": 61
+ },
+ "Nick": {
+  "1": 102,
+  "2": 73,
+  "3": 94,
+  "1@14": 36,
+  "3@16": 56
+ },
+ "Julien": {
+  "1": 80,
+  "2": 79,
+  "3": 82,
+  "1@14": 28,
+  "3@16": 46
+ },
+ "Owen": {
+  "1": 104,
+  "2": 69,
+  "3": 116
+ },
+ "_note_partial": "Keys like '1@14' = first 14 days of ramp month 1."
+}

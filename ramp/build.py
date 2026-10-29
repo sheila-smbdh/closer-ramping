@@ -173,16 +173,32 @@ def promote_status(p, data):
 
 
 def shown_call_dates(p, data, since):
-    """Dates of the 5th and 10th shown closer calls by EOD 'showed' (cumulative)."""
-    rows = sorted(data.eod_rows(p["eod_names"], since, data.through), key=lambda r: r["report_date"])
-    total, hits = 0, {}
-    for r in rows:
-        total += data.num(r["showed"])
+    """Dates of the 5th and 10th showed closer calls.
+
+    Per day: EOD 'showed', capped at the 45-min discovery calls Close has that day (EODs sometimes
+    include setter calls). Days with no EOD use Close's count as an estimate.
+    """
+    eod = {}
+    for r in data.eod_rows(p["eod_names"], since, data.through):
+        eod[d(r["report_date"])] = eod.get(d(r["report_date"]), 0) + data.num(r["showed"])
+    total, hits, estimated, cur = 0, {}, False, since
+    while cur <= data.through:
+        booked = data.scheduled_on(p["close_user"], cur)
+        if cur in eod:
+            total += min(eod[cur], booked) if booked else eod[cur]
+        elif booked:
+            total += booked
+            estimated = True
         for n in (5, 10):
             if n not in hits and total >= n:
-                hits[n] = d(r["report_date"])
-    first_eod = d(rows[0]["report_date"]) if rows else None
-    return hits, total, first_eod
+                hits[n] = (cur, estimated)
+        cur += timedelta(days=1)
+    return hits, total
+
+
+def load_feedback():
+    f = ROOT / "config/feedback.json"
+    return json.loads(f.read_text()) if f.exists() else {}
 
 
 def fmt_day(x):
@@ -198,103 +214,57 @@ def render(snap):
     promotes = {n: promote_status(people[n], data) for n in ("Quinn", "Yobani", "Dave")}
 
     # ---------- daily alert ----------
-    action, watch, data_issues = [], [], []
+    # One line per person, only when there's something for Sheila or Jay to do. Empty sections are left out.
+    feedback = load_feedback()
+    items = []
     for n in ("Oliver", "Tyler"):
         p = people[n]
-        hits, total, first_eod = shown_call_dates(p, data, d(p["go_live"]))
-        gap = (first_eod - d(p["go_live"])).days if first_eod else None
-        line = f"*{n}* (ramp month 1, day {closers[n][0]['days_in']}): {int(total)} shown closer calls by EOD reports"
-        if 10 in hits:
-            line += f"; passed the *10th* on {fmt_day(hits[10])}. Jay: are the mock-call issues fixed? If not, this is the cut checkpoint."
-        elif 5 in hits:
-            line += f"; passed the *5th* on {fmt_day(hits[5])}. Jay: still seeing the mock-call issues? If yes, they go on watch."
-        action.append(line + " _No Jay feedback is logged yet, so I can't check this automatically._")
-        if gap and gap > 1:
-            data_issues.append(f"{n}: no EOD reports from go-live {fmt_day(d(p['go_live']))} until {fmt_day(first_eod)}, so the shown-call count above starts late.")
-    for n, (rows, last_call) in promotes.items():
-        y = data.scheduled_on(people[n]["close_user"], t)
-        cur = rows[-1]
-        msg = f"*{n}* (pre-ramp month {cur['month']}): {y} self-set closer calls yesterday (floor 1–2)."
-        if cur["end"] < t:
-            calls = sum(r["held_or_booked"] for r in rows)
-            msg = (f"*{n}*: pre-ramp month 2 ended {fmt_day(cur['end'])} (clock paused {sum(r['paused_days'] for r in rows)} days for time off) "
-                   f"with {cur['held_or_booked']} closer calls against 40 ({calls} across both months). Ascension decision is due; he isn't on the closer calendar.")
-            action.append(msg)
-            continue
-        need = cur["target_calls"] - cur["held_or_booked"] - cur["booked_ahead"]
-        days_left = (cur["end"] - t).days
-        msg += f" Month so far {cur['held_or_booked']} held + {cur['booked_ahead']} booked of {cur['target_calls']}"
-        if need > 0:
-            msg += f"; needs {need} more in {days_left} days (~{need / max(days_left, 1):.1f}/day)."
-        if last_call and (t - last_call).days >= 5:
-            msg += f" Last closer call {fmt_day(last_call)}."
-        watch.append(msg)
+        hits, _ = shown_call_dates(p, data, d(p["go_live"]))
+        open_items = [f["issue"] for f in feedback.get(n, []) if f.get("status", "open") == "open"]
+        fixes = f" ({'; '.join(open_items[:3])})" if open_items else ""
+        for k, label, consequence in ((10, "10th", "If the issues aren't fixed, this is the cut checkpoint."),
+                                      (5, "5th", "If the issues are still there, they go on watch.")):
+            if k in hits:
+                day, est = hits[k]
+                when = f"~{fmt_day(day)}" if est else fmt_day(day)
+                items.append(f"*{n}*: {label} showed call was {when}. A call review is due to check whether {('he' if n in ('Oliver', 'Tyler') else 'they')} improved on the mock-call feedback{fixes}. "
+                             f"{consequence} <@U06Q63DTS13> can you review one of {n}'s recent calls and reply here?")
+                break
     for n in ("Kevin", "Daniel", "Solomon"):
         r = closers[n][-1]
-        if r["month"] == 3 and r["end"] - t <= timedelta(days=10):
-            gap_cash = r["target"]["cash"] - r["cash"]
-            action.append(
-                f"*{n}* ramp month 3 ends {fmt_day(r['end'])} ({(r['end'] - t).days} days): {money(r['cash'])} of $200K and {pct(r['ctc'])} CTC (needs both $200K and 25%). "
-                f"Short {money(max(gap_cash, 0))}; cut decision due at month end."
-            )
+        left = (r["end"] - data.today).days
+        if r["month"] == 3 and 0 <= left <= 7:
+            items.append(f"*{n}*: ramp month 3 ends {fmt_day(r['end'])}. Keep-or-cut call due; see the month 3 comparison.")
+    for n, (rows, last_call) in promotes.items():
+        cu = people[n]["close_user"]
+        cur = rows[-1]
+        quiet_days = [t - timedelta(days=i) for i in range(5) if (t - timedelta(days=i)).weekday() < 5]
+        nothing = all(data.scheduled_on(cu, x) == 0 for x in quiet_days)
+        back = max((d(b) + timedelta(days=1) for a, b in people[n].get("time_off", []) if d(b) < t), default=None)
+        since = max(x for x in (last_call, back) if x) if (last_call or back) else None
+        idle_weekdays = sum(1 for i in range((t - since).days) if (since + timedelta(days=i + 1)).weekday() < 5) if since else 0
+        if nothing and idle_weekdays >= 5 and last_call:
+            nxt = min((d(f"2026-{k}") for k in data.close.get(cu, {}) if d(f"2026-{k}") > t), default=None)
+            items.append(f"*{n}*: no self-set closer calls since {fmt_day(last_call)} (target 1–2 a day)."
+                         + (f" Next one booked {fmt_day(nxt)}." if nxt else " Nothing booked."))
 
-    lines = [f"*New hire ramp: daily alert, {fmt_day(data.today)}* _(data through {fmt_day(t)})_", ""]
-    lines += ["*Needs a decision*"] + [f"• {x}" for x in action] + [""]
-    lines += ["*Self-set volume*"] + [f"• {x}" for x in watch] + [""]
-    lines += ["*Setter week*", "• Nobody is in setter week right now.", ""]
-    if data_issues:
-        lines += ["*Data gaps*"] + [f"• {x}" for x in data_issues] + [""]
-    lines += ["_Reply in thread with feedback (e.g. “Oliver, call w/ X 10/28. Fix: … Better: …”) and I’ll log it._"]
+    lines = [f"*Ramp alert · {fmt_day(data.today)}*"] + [f"• {x}" for x in items]
+    if any(" ~" in x for x in items):
+        lines.append("_~ = estimated from Close; no EOD was filed for some of those days._")
+    if not items:
+        lines = [f"✅ {fmt_day(data.today)}: nothing needs you today."]
     daily = "\n".join(lines)
 
     # ---------- Monday digest ----------
-    dl = [f"*New hire ramp: weekly digest* _(data through {fmt_day(t)})_", ""]
-    dl += ["*New hire closers*", "```", f"{'Name':<8}{'Stage':<10}{'Day':>8}{'Cash':>10}{'Pace*':>10}{'Showed':>8}{'Closes':>7}{'CTC':>6}{'Booked':>8}"]
-    for n, rows in closers.items():
-        r = rows[-1]
-        dl.append(
-            f"{n:<8}{'Ramp M' + str(r['month']):<10}{str(r['days_in']) + '/' + str(r['days_total']):>8}{money(r['cash']):>10}"
-            f"{money(r['straight_line']):>10}{int(r['showed']):>8}{int(r['closed']):>7}{pct(r['ctc']):>6}{r['sched_close'] + r['booked_ahead']:>8}"
-        )
-    dl += ["```", "_*Pace = target × days elapsed ÷ days in ramp month (straight line; cash actually lands late in a month). Booked = Close discovery calls held + already on the calendar this ramp month._", ""]
-    dl.append("*Ramp history and calls coming up*")
-    for n in ("Kevin", "Daniel", "Solomon"):
-        rows = closers[n]
-        hist = "; ".join(
-            f"M{r['month']} {money(r['cash'])}" + (f" ({r['path']})" if r.get("path") else "") for r in rows
-        )
-        dl.append(f"• *{n}*: {hist}. M3 needs $200K and 25% CTC by {fmt_day(rows[-1]['end'])}.")
-    for n in ("Oliver", "Tyler"):
-        r = closers[n][0]
-        dl.append(f"• *{n}*: M1 ends {fmt_day(r['end'])}. {money(r['cash'])} so far; floor $75K, open path at $100K (flag $95K–$99.9K to Sheila).")
-    dl += ["", "*Setter promotes (pre-ramp, self-set)*", "```", f"{'Name':<8}{'Month':<7}{'Window':<16}{'Calls':>7}{'Target':>8}{'Showed':>8}{'Closes':>7}"]
+    from ramp.compare import slack_digest
+    digest = slack_digest(snap)
+    pl = ["", "*Setter promotes (self-set closer calls, Close)*", "```", f"{'':<8}{'Month':<7}{'Window':<14}{'Calls':>7}{'Target':>8}"]
     for n, (rows, _) in promotes.items():
         for r in rows:
-            w = f"{r['start']:%-m/%-d}–{r['end']:%-m/%-d}"
             calls = f"{r['held_or_booked']}+{r['booked_ahead']}" if r["booked_ahead"] else str(r["held_or_booked"])
-            dl.append(f"{n:<8}{'PR' + str(r['month']):<7}{w:<16}{calls:>7}{r['target_calls']:>8}{int(r['showed']):>8}{int(r['closed']):>7}")
-    dl += ["```", "_Calls = Close discovery calls held (+ booked ahead). Quinn’s windows skip his time off. Showed/closes come from EOD reports, which these three rarely file._", ""]
-    checks = []
-    for n in ("Oliver", "Tyler"):
-        p = people[n]
-        s0 = data.through - timedelta(days=6)
-        eod = data.eod_totals(p["eod_names"], s0, t)
-        close_n = data.scheduled(p["close_user"], s0, t)
-        if eod["scheduled"] > close_n * 1.2:
-            checks.append(f"• {n}: EOD says {int(eod['scheduled'])} calls scheduled in the last 7 days, Close shows {close_n} discovery calls. Setter calls are likely being logged as closer calls (Jay flagged this to Tyler 10/23), which inflates shows and the 5th/10th call count.")
-    for n in ("Kevin", "Daniel", "Solomon"):
-        p = people[n]
-        c = data.tracker.get((t.strftime("%Y-%m"), p["tracker_id"]))
-        eod = data.eod_totals(p["eod_names"], t.replace(day=1), t)
-        if c and c["values"].get("live") is not None and abs(c["values"]["live"] - eod["showed"]) >= 3:
-            checks.append(f"• {n}, {t:%B} to date: Sales Tracker says {c['values']['live']} live calls, EOD says {int(eod['showed'])}. Using EOD.")
-    checks.append("• Quinn, Yobani and Dave rarely file closer EODs, so their show rate and CTC aren’t reliable yet.")
-    for n in ("Kevin", "Daniel", "Solomon"):
-        m1 = closers[n][0]
-        if m1["cash"] < RAMP[1]["floor"]:
-            checks.append(f"• {n}’s ramp month 1 ({m1['start']:%-m/%-d}–{m1['end']:%-m/%-d}) comes out at {money(m1['cash'])}, under the $75K floor, when counted from his first held call. Worth a look at whether the floor was applied.")
-    dl += ["*Data checks*"] + checks
-    digest = "\n".join(dl)
+            pl.append(f"{n:<8}{'PR' + str(r['month']):<7}{r['start']:%-m/%-d}–{r['end']:%-m/%-d}".ljust(29) + f"{calls:>7}{r['target_calls']:>8}")
+    pl += ["```", "_Calls = held (+ already booked). Windows skip time off._"]
+    digest += "\n" + "\n".join(pl)
 
     # ---------- office hour prep ----------
     cohort = roster["cohorts"]["kds"]
