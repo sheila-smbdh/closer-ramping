@@ -187,8 +187,7 @@ def shown_call_dates(p, data, since):
         if cur in eod:
             total += min(eod[cur], booked) if booked else eod[cur]
         elif booked:
-            total += booked
-            estimated = True
+            estimated = True  # calls booked but no EOD: shows unknown, not counted (needs Zoom recording length)
         for n in (5, 10):
             if n not in hits and total >= n:
                 hits[n] = (cur, estimated)
@@ -250,7 +249,7 @@ def render(snap):
 
     lines = [f"*Ramp alert · {fmt_day(data.today)}*"] + [f"• {x}" for x in items]
     if any(" ~" in x for x in items):
-        lines.append("_~ = estimated from Close; no EOD was filed for some of those days._")
+        lines.append("_~ = counted from EOD reports only; some days with booked calls have no EOD, so the real date may be earlier._")
     if not items:
         lines = [f"✅ {fmt_day(data.today)}: nothing needs you today."]
     daily = "\n".join(lines)
