@@ -27,6 +27,7 @@
 - Calls (scheduled/shown/closed), setter bookings, self-sets: Close. Backup: EOD tracker.
 - Roster inputs: "Roster" tab in the New Hire Tracker sheet. Snapshot saved to this repo each run.
 - Call review: track Jay's feedback against the latest rubric; no AI pre-grading for now.
+- Ramp comparison method stays as is (confirmed 11/2): corrected go-live dates, full calendar ramp month, cash from the 2M tracker, live calls and closes from EOD reports (#closer-eod). The New Hire Tracker's Weekly/Monthly Report is only a backup check. It differs by design: 28-day months, old go-live dates, and Sales Tracker Inputs for calls and closes.
 
 ## Delivery
 - One Slack channel: Sheila + Jay only. No new-hire-facing posts yet. Samples approved by Sheila before anything posts.
@@ -34,3 +35,4 @@
 - Office hour prep: weekly per cohort, 24h before the session.
 - Every generated or posted output is saved in this repo.
 - Ramp comparison dashboard: separate from the 2M tracker app.
+- Weekly ramp table (from 11/2): Sheila only needs the "everyone at the same point" table, not the curves. It's posted as an image to #new-hire-onboarding every Monday morning ET, covering the reps in `weekly_table.reps`. Steps: docs/weekly_table_routine.md. Code: `ramp/weekly_table.py`, `ramp/slack_eod.py`.
