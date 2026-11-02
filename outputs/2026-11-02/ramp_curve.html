@@ -47,6 +47,8 @@ th:first-child,td:first-child{text-align:left}
 thead th{font:500 11.5px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 tr.cur td{font-weight:600}
 tr.med td{color:var(--ink2);font-style:italic}
+thead th.grp{text-align:center;border-bottom:1px solid var(--grid);color:var(--ink2)}
+td.gs,thead tr:last-child th.gs{border-left:1px solid var(--grid)}
 .notes{font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:6px;max-width:72ch}
 .notes p{margin:0}
 </style>
@@ -165,12 +167,26 @@ function chart(id, key, fmt, refs){
 chart("cash", "cash", fmt$, [{v:100000,c:"var(--target)",label:"$100K"},{v:75000,c:"var(--floor)",label:"$75K floor"}]);
 chart("live", "live", v=>String(v));
 
-// Standings table at Oliver's latest cash day (both have reached it).
+// Standings table: same-day columns, then full month 1 for past closers.
 const D = Math.min(...CUR.map(n=>DATA[n].cash.length)), LD = Math.min(...CUR.map(n=>DATA[n].live.length));
-document.getElementById("tabletitle").textContent = `Everyone at ramp day ${D}`;
-const rows = Object.keys(DATA).map(n=>({n, cash:DATA[n].cash[D-1], live:DATA[n].live[LD-1], fin:DATA[n].current?null:DATA[n].cash[30], cur:DATA[n].current})).sort((a,b)=>b.cash-a.cash);
-document.getElementById("tbl").innerHTML = `<thead><tr><th>Closer</th><th>Went live</th><th>Cash by day ${D}</th><th>Shows by day ${LD}</th><th>Month 1 final</th></tr></thead><tbody>` +
-  rows.map(r=>`<tr class="${r.cur?"cur":""}"><td>${r.cur?`<span class="sw" style="background:${COLOR[r.n]};margin-right:8px;vertical-align:-1px"></span>`:""}${r.n}</td><td>${DATA[r.n].go_live.slice(5).replace("-","/")}/${DATA[r.n].go_live.slice(2,4)}</td><td>${fmt$(r.cash)}</td><td>${r.live}${r.cur?" *":""}</td><td>${r.fin==null?"in progress":fmt$(r.fin)}</td></tr>`).join("") +
-  `<tr class="med"><td>Past median</td><td></td><td>${fmt$(MED.cash[D-1])}</td><td>${MED.live[LD-1]}</td><td>${fmt$(MED.cash[30])}</td></tr></tbody>`;
-document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">* Undercounted: no EODs filed in their first week. Shows use day ${LD} because EOD data runs through 10/28.</p>`);
+document.getElementById("tabletitle").textContent = `Everyone at the same point in month 1`;
+const pct = (c,l) => l ? Math.round(c/l*100) + "%" : "–";
+const rows = Object.keys(DATA).map(n => { const d = DATA[n], f = d.current ? null : d.live.length - 1;
+  return {n, cur:d.current, cash:d.cash[D-1], live:d.live[LD-1], cl:d.closes[LD-1],
+          fLive: f==null?null:d.live[f], fCl: f==null?null:d.closes[f], fCash: d.current?null:d.cash[d.cash.length-1]}; })
+  .sort((a,b)=>b.cash-a.cash);
+const P = rows.filter(r=>!r.cur), md = k => median(P.map(r=>r[k]));
+const mdCtc = k => median(P.map(r => r[k[1]] ? r[k[0]]/r[k[1]] : 0));
+const sw = r => r.cur ? `<span class="sw" style="background:${COLOR[r.n]};margin-right:8px;vertical-align:-1px"></span>` : "";
+const star = r => r.cur ? " *" : "";
+document.getElementById("tbl").innerHTML =
+  `<thead><tr><th></th><th></th><th colspan="3" class="grp">By day ${LD}</th><th class="grp">By day ${D}</th><th colspan="4" class="grp">Full month 1</th></tr>
+   <tr><th>Closer</th><th>Went live</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead><tbody>` +
+  rows.map(r=>`<tr class="${r.cur?"cur":""}"><td>${sw(r)}${r.n}</td><td>${DATA[r.n].go_live.slice(5).replace("-","/")}/${DATA[r.n].go_live.slice(2,4)}</td>
+    <td class="gs">${r.live}${star(r)}</td><td>${r.cl}</td><td>${pct(r.cl,r.live)}</td><td class="gs">${fmt$(r.cash)}</td>
+    ${r.cur ? `<td class="gs" colspan="4" style="text-align:center;color:var(--muted);font-weight:400">in progress</td>` :
+      `<td class="gs">${r.fLive}</td><td>${r.fCl}</td><td>${pct(r.fCl,r.fLive)}</td><td>${fmt$(r.fCash)}</td>`}</tr>`).join("") +
+  `<tr class="med"><td>Past median</td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td class="gs">${fmt$(md("cash"))}</td>
+    <td class="gs">${md("fLive")}</td><td>${md("fCl")}</td><td>${Math.round(mdCtc(["fCl","fLive"])*100)}%</td><td>${fmt$(md("fCash"))}</td></tr></tbody>`;
+document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Live calls and closes come from EOD reports, which run through 10/28, so those columns stop at day ${LD}. Cash comes from the tracker through 11/1 (day ${D}). CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Undercounted: Oliver and Tyler filed no EODs in their first week. Tyler's first close came on 10/30, after the EOD data ends, so it shows in his cash but not in his closes yet.</p>`);
 </script>
