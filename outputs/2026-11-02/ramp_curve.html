@@ -174,7 +174,7 @@ const pct = (c,l) => l ? Math.round(c/l*100) + "%" : "–";
 const rows = Object.keys(DATA).map(n => { const d = DATA[n], f = d.current ? null : d.live.length - 1;
   return {n, cur:d.current, cash:d.cash[D-1], live:d.live[LD-1], cl:d.closes[LD-1],
           fLive: f==null?null:d.live[f], fCl: f==null?null:d.closes[f], fCash: d.current?null:d.cash[d.cash.length-1]}; })
-  .sort((a,b)=>b.cash-a.cash);
+  .sort((a,b)=> +DATA[a.n].go_live.slice(8) - +DATA[b.n].go_live.slice(8) || DATA[a.n].go_live.localeCompare(DATA[b.n].go_live));  // by day of month they went live, so people who started on similar days sit together
 const P = rows.filter(r=>!r.cur), md = k => median(P.map(r=>r[k]));
 const mdCtc = k => median(P.map(r => r[k[1]] ? r[k[0]]/r[k[1]] : 0));
 const sw = r => r.cur ? `<span class="sw" style="background:${COLOR[r.n]};margin-right:8px;vertical-align:-1px"></span>` : "";
@@ -188,5 +188,5 @@ document.getElementById("tbl").innerHTML =
       `<td class="gs">${r.fLive}</td><td>${r.fCl}</td><td>${pct(r.fCl,r.fLive)}</td><td>${fmt$(r.fCash)}</td>`}</tr>`).join("") +
   `<tr class="med"><td>Past median</td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td>${fmt$(md("cash"))}</td>
     <td class="gs">${md("fLive")}</td><td>${md("fCl")}</td><td>${Math.round(mdCtc(["fCl","fLive"])*100)}%</td><td>${fmt$(md("fCash"))}</td></tr></tbody>`;
-document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. The charts above include Tyler's day 19 (11/1). CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Undercounted: no EODs in their first week and a few missing days since (see the live-calls chart). Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
+document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Sorted by the day of the month each closer went live. Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. The charts above include Tyler's day 19 (11/1). CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Undercounted: no EODs in their first week and a few missing days since (see the live-calls chart). Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
 </script>
