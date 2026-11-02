@@ -35,3 +35,4 @@
 - Office hour prep: weekly per cohort, 24h before the session.
 - Every generated or posted output is saved in this repo.
 - Ramp comparison dashboard: separate from the 2M tracker app.
+- Weekly ramp table (from 11/2): Sheila only needs the "everyone at the same point" table, not the curves. It's posted as an image to #new-hire-onboarding every Monday morning ET, covering the reps in `weekly_table.reps`. Steps: docs/weekly_table_routine.md. Code: `ramp/weekly_table.py`, `ramp/slack_eod.py`.

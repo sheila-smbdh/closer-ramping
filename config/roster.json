@@ -52,7 +52,8 @@
    "close_user": "Oliver English",
    "tracker_id": "oliver",
    "eod_names": [
-    "Oliver English"
+    "Oliver English",
+    "Oliver"
    ],
    "cohort": "ot"
   },
@@ -65,7 +66,8 @@
    "close_user": "Tyler Johnson",
    "tracker_id": "tyler",
    "eod_names": [
-    "Tyler Johnson"
+    "Tyler Johnson",
+    "Tyler"
    ],
    "cohort": "ot"
   },
@@ -252,5 +254,14 @@
     "Tyler"
    ]
   }
+ },
+ "weekly_table": {
+  "_note": "Reps in the Monday ramp table posted to #new-hire-onboarding. Add new closers here once they go live; remove them after ramp month 3. past_snapshot holds the finished past closers.",
+  "reps": [
+   "Oliver",
+   "Tyler"
+  ],
+  "past_snapshot": "2026-10-29",
+  "slack_channel": "C0CD29P851Q"
  }
 }
