@@ -27,6 +27,7 @@
 - Calls (scheduled/shown/closed), setter bookings, self-sets: Close. Backup: EOD tracker.
 - Roster inputs: "Roster" tab in the New Hire Tracker sheet. Snapshot saved to this repo each run.
 - Call review: track Jay's feedback against the latest rubric; no AI pre-grading for now.
+- Ramp comparison method stays as is (confirmed 11/2): corrected go-live dates, full calendar ramp month, cash from the 2M tracker, live calls and closes from EOD reports (#closer-eod). The New Hire Tracker's Weekly/Monthly Report is only a backup check. It differs by design: 28-day months, old go-live dates, and Sales Tracker Inputs for calls and closes.
 
 ## Delivery
 - One Slack channel: Sheila + Jay only. No new-hire-facing posts yet. Samples approved by Sheila before anything posts.
