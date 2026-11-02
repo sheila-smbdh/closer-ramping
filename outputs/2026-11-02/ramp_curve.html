@@ -180,13 +180,13 @@ const mdCtc = k => median(P.map(r => r[k[1]] ? r[k[0]]/r[k[1]] : 0));
 const sw = r => r.cur ? `<span class="sw" style="background:${COLOR[r.n]};margin-right:8px;vertical-align:-1px"></span>` : "";
 const star = r => r.cur ? " *" : "";
 document.getElementById("tbl").innerHTML =
-  `<thead><tr><th></th><th></th><th colspan="3" class="grp">By day ${LD}</th><th class="grp">By day ${D}</th><th colspan="4" class="grp">Full month 1</th></tr>
+  `<thead><tr><th></th><th></th><th colspan="4" class="grp">By day ${D}</th><th colspan="4" class="grp">Full month 1</th></tr>
    <tr><th>Closer</th><th>Went live</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead><tbody>` +
   rows.map(r=>`<tr class="${r.cur?"cur":""}"><td>${sw(r)}${r.n}</td><td>${DATA[r.n].go_live.slice(5).replace("-","/")}/${DATA[r.n].go_live.slice(2,4)}</td>
-    <td class="gs">${r.live}${star(r)}</td><td>${r.cl}</td><td>${pct(r.cl,r.live)}</td><td class="gs">${fmt$(r.cash)}</td>
+    <td class="gs">${r.live}${star(r)}</td><td>${r.cl}</td><td>${pct(r.cl,r.live)}</td><td>${fmt$(r.cash)}</td>
     ${r.cur ? `<td class="gs" colspan="4" style="text-align:center;color:var(--muted);font-weight:400">in progress</td>` :
       `<td class="gs">${r.fLive}</td><td>${r.fCl}</td><td>${pct(r.fCl,r.fLive)}</td><td>${fmt$(r.fCash)}</td>`}</tr>`).join("") +
-  `<tr class="med"><td>Past median</td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td class="gs">${fmt$(md("cash"))}</td>
+  `<tr class="med"><td>Past median</td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td>${fmt$(md("cash"))}</td>
     <td class="gs">${md("fLive")}</td><td>${md("fCl")}</td><td>${Math.round(mdCtc(["fCl","fLive"])*100)}%</td><td>${fmt$(md("fCash"))}</td></tr></tbody>`;
 document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. The charts above include Tyler's day 19 (11/1). CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Undercounted: no EODs in their first week and a few missing days since (see the live-calls chart). Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
 </script>
