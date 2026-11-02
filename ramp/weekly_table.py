@@ -11,7 +11,9 @@ Method (agreed with Sheila 11/2, see docs/decisions.md):
 - Ramp month k = calendar month counted from go-live (first 45-min discovery call held).
 - Everyone is compared at the same day of that month: the ramping reps' day as of yesterday.
 - Cash: 2M tracker. Live calls and closes: EOD reports. Past closers use the EOD snapshot, capped each day at their
-  45-min Close bookings. Ramping reps use #closer-eod with no cap (Close misses many of their calls).
+  45-min Close bookings. Ramping reps use #closer-eod, capped the same way with fresh Close meetings
+  (data/snapshots/<date>/close_meetings_*.json). Only 45-minute discovery calls count; 15-minute intro (setter)
+  calls don't, until Zoom length can show which intros ran long enough to count (Sheila, 11/2).
 - A ramping rep's EOD close counts only if cash was collected that day (EOD or tracker); otherwise it's flagged.
 - Rows are sorted by the day of the month each closer went live, so similar start days sit together.
 """
@@ -19,12 +21,24 @@ import json
 import statistics
 import subprocess
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from html import escape
 
 from ramp.build import ROOT, Data, add_months, d, money
 from ramp.compare import PAST, measure
 
+
+
+def _is_est(iso):
+    """US Eastern is on standard time from the first Sunday of November to the second Sunday of March."""
+    dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).replace(tzinfo=None)
+    y = dt.year
+    def nth_sunday(month, n):
+        first = datetime(y, month, 1)
+        return first + timedelta(days=(6 - first.weekday()) % 7 + 7 * (n - 1))
+    dst_start = nth_sunday(3, 2) + timedelta(hours=7)   # 2am EST = 07:00 UTC
+    dst_end = nth_sunday(11, 1) + timedelta(hours=6)    # 2am EDT = 06:00 UTC
+    return not (dst_start <= dt < dst_end)
 
 
 def fmt_money(x):
@@ -45,6 +59,19 @@ class Current:
                 self.tracker[(f.stem[-7:], c["rep_id"])] = c
         self.eod = json.loads((snap / "eod_slack.json").read_text())
         self.people = people
+        # 45-min discovery bookings per Close user per ET day (canceled / declined-by-org left out).
+        self.booked = {}
+        seen = set()
+        for f in sorted(snap.glob("close_meetings_*.json")):
+            for m in json.loads(f.read_text())["data"]:
+                if m["id"] in seen or not m.get("starts_at") or m.get("duration") != 2700:
+                    continue
+                if m.get("status") in ("canceled", "declined-by-org"):
+                    continue
+                seen.add(m["id"])
+                day = (datetime.fromisoformat(m["starts_at"].replace("Z", "+00:00")) - timedelta(hours=5 if _is_est(m["starts_at"]) else 4)).date()
+                key = (m["user_id"], day)
+                self.booked[key] = self.booked.get(key, 0) + 1
 
     def cum_cash(self, rep_id, day):
         c = self.tracker.get((day.strftime("%Y-%m"), rep_id)) or {}
@@ -85,7 +112,8 @@ class Current:
                 if cur.weekday() < 5:
                     missing.append(cur)
             else:
-                live += r["showed"] or 0
+                booked = self.booked.get((p["close_user_id"], cur), 0)
+                live += min(r["showed"] or 0, booked)
                 if r["showed_estimated"]:
                     estimated.append(cur)
                 cl = r["closed"] or 0
@@ -217,8 +245,8 @@ def render(run_date):
     out = ROOT / "outputs" / run_date
     out.mkdir(parents=True, exist_ok=True)
     through = d(run_date) - timedelta(days=1)
-    sources = ("Cash: 2M tracker. Live calls and closes: EOD reports (#closer-eod for the ramping reps; "
-               "the 10/29 EOD snapshot for past closers).")
+    sources = ("Live calls = 45-minute discovery calls: EOD shows capped each day at 45-min Close bookings "
+               "(intro calls left out; Owen, Nick, Julien, Harry and Chris predate the Close data and are uncapped). Closes: EOD reports. Cash: 2M tracker.")
     html = ("<!doctype html><html><head><meta charset='utf-8'>"
             "<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap'>"
             f"<style>{CSS}</style></head><body><div class='wrap'>"
