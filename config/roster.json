@@ -293,13 +293,19 @@
   }
  },
  "weekly_table": {
-  "_note": "Reps in the Monday ramp table posted to #new-hire-onboarding. Add new closers here once they go live; remove them after ramp month 3. past_snapshot holds the finished past closers.",
+  "_note": "Reps in the ramp tables posted by the Monday routine (#new-hire-onboarding) and the Friday routine (#sales-leadership). Add new closers once they go live. A rep drops out on their own a week after ramp month 3 ends (the week after it ends, they get one final month 3 table). past_snapshot holds the finished past closers.",
   "reps": [
    "Oliver",
-   "Tyler"
+   "Tyler",
+   "Kevin",
+   "Solomon"
   ],
   "past_snapshot": "2026-10-29",
   "slack_channel": "C0CD29P851Q",
-  "_roster_fields_note": "commission_pct, replacement_deadline and referral_payout_status mirror the New Hire Tracker Roster tab ('Closing Commission %', 'Deadline', 'Referral Payout Status'), copied 11/3. Update them here when the sheet changes."
+  "_roster_fields_note": "commission_pct, replacement_deadline and referral_payout_status mirror the New Hire Tracker Roster tab ('Closing Commission %', 'Deadline', 'Referral Payout Status'), copied 11/3. Update them here when the sheet changes.",
+  "channels": {
+   "monday": "C0CD29P851Q",
+   "friday": "C0ALMSYHZB6"
+  }
  }
 }
