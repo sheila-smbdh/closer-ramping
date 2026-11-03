@@ -37,4 +37,5 @@
 - Every generated or posted output is saved in this repo.
 - Ramp comparison dashboard: separate from the 2M tracker app.
 - Weekly ramp table (from 11/2): Sheila only needs the "everyone at the same point" table, not the curves. It's posted as an image to #new-hire-onboarding every Monday morning ET, covering the reps in `weekly_table.reps`. Steps: docs/weekly_table_routine.md. Code: `ramp/weekly_table.py`, `ramp/slack_eod.py`.
+- Ramp table delivery (11/3): one post a week, Fridays to #sales-leadership. The Monday post to #new-hire-onboarding is paused, not deleted.
 - Live calls = 45-minute discovery calls only (Sheila, 11/2). Each day's EOD shows are capped at the 45-min Close bookings that day; 15-minute intro (setter) calls aren't counted. Later, once Zoom length can be read from Close, intro calls that ran past the 15-minute mark into the ~25-minute zone will count as closer calls. Close's `actual_duration` field isn't reliable yet: it's blank for most calls and under 5 minutes on many held 45-minute calls.
