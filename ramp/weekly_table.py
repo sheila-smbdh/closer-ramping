@@ -146,7 +146,7 @@ class Current:
                 "cash_no_eod": cash_no_eod}
 
 
-def build(run_date, reps=None):
+def build(run_date, reps=None, separate=False):
     roster = json.loads((ROOT / "config/roster.json").read_text())
     people = {p["name"]: p for p in roster["people"]}
     cfg = roster["weekly_table"]
@@ -163,10 +163,10 @@ def build(run_date, reps=None):
         gl = d(people[n]["go_live"])
         k = next((k for k in range(1, 4) if add_months(gl, k - 1) <= through < add_months(gl, k)), None)
         if k:
-            groups.setdefault(k, []).append(n)
+            groups.setdefault((k, n) if separate else (k, ""), []).append(n)
 
     tables = []
-    for k, names in sorted(groups.items()):
+    for (k, _), names in sorted(groups.items()):
         firsts = [cur.measure(people[n], k, through) for n in names]
         day = min(m["day"] for m in firsts)
         rows = [cur.measure(people[n], k, add_months(d(people[n]["go_live"]), k - 1) + timedelta(days=day - 1)) for n in names]
@@ -269,7 +269,8 @@ def table_html(t):
                         f'{ctc(f["closes"], f["live"])} CTC, {fmt_money(f["cash"])}')
         if bits:
             subs.append(f'<p class="sub"><b>{escape(r["name"])}</b>: {" · ".join(bits)}</p>')
-    return (f'<section><h2>Ramp month {k} · day {day}</h2>' + "".join(subs) +
+    who = f'{t["current"][0]["name"]} · ' if len(t["current"]) == 1 else ""
+    return (f'<section><h2>{who}Ramp month {k} · day {day}</h2>' + "".join(subs) +
             f'<table><thead><tr><th></th><th></th><th></th><th colspan="4" class="grp">By day {day}</th><th colspan="4" class="grp">Full month {k}</th></tr>'
             '<tr><th>Closer</th><th>Went live</th><th>Month end</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
             '<th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead>'
@@ -298,8 +299,8 @@ section h2+.sub{margin-top:-2px}section .sub:last-of-type{margin-bottom:10px}
 """
 
 
-def render(run_date, reps=None, prefix="weekly_table"):
-    tables = build(run_date, reps)
+def render(run_date, reps=None, prefix="weekly_table", separate=False):
+    tables = build(run_date, reps, separate)
     out = ROOT / "outputs" / run_date
     out.mkdir(parents=True, exist_ok=True)
     through = d(run_date) - timedelta(days=1)
@@ -328,6 +329,8 @@ def render(run_date, reps=None, prefix="weekly_table"):
 
 
 if __name__ == "__main__":
-    # python3 -m ramp.weekly_table <date> [Rep1,Rep2 <output_prefix>]   (defaults: weekly_table.reps, weekly_table)
-    reps = sys.argv[2].split(",") if len(sys.argv) > 2 else None
-    print(render(sys.argv[1], reps, sys.argv[3] if len(sys.argv) > 3 else "weekly_table"))
+    # python3 -m ramp.weekly_table <date> [Rep1,Rep2 <output_prefix> [--each]]
+    # Defaults: weekly_table.reps, weekly_table. --each gives every rep their own table at their own current day.
+    args = [a for a in sys.argv[1:] if a != "--each"]
+    reps = args[1].split(",") if len(args) > 1 else None
+    print(render(args[0], reps, args[2] if len(args) > 2 else "weekly_table", "--each" in sys.argv))
