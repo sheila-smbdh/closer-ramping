@@ -31,4 +31,5 @@ The method is fixed (docs/decisions.md). Do not change how numbers are counted i
 - Live calls count 45-minute discovery calls only (EOD shows capped at Close's 45-min bookings each day). Intro calls aren't counted until there's a reliable Zoom length to check them against; Sheila is looking into that.
 - Read-only everywhere except the one Slack post and the git push. No writes to Close, the tracker, or Google Sheets.
 - If the upload fails partway, check whether the file was already shared in the channel before trying again, so it never posts twice.
+- Commission and replacement expiry come from `config/roster.json` (`commission_pct`, `replacement_deadline`), which mirrors the New Hire Tracker Roster tab. The routine can't read Google Sheets, so update those fields in a normal session when the sheet changes.
 - Past closers come from `weekly_table.past_snapshot`. When a new cohort finishes a month and should become a comparison row, that needs a fresh snapshot and a config change, made in a normal session.
