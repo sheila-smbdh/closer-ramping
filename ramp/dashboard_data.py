@@ -69,6 +69,7 @@ def build(run_date):
                 "key": f"{n}|{k}", "kind": "closer", "name": n, "ramp_month": k,
                 "period": f"End of ramp month {k}" if complete else f"Ramp month {k}, day {day_in} of {length}",
                 "complete": "Y" if complete else "N",
+                "day_in": day_in, "month_days": length,
                 "status": p.get("sheet_status", ""),
                 "went_live": p["go_live"],
                 "now": f"Month {now_k}, day {now_day}",
@@ -88,7 +89,7 @@ def build(run_date):
     for k in (1, 2, 3):
         ex = EXPECT[k]
         rows.append({"key": f"Expectation|{k}", "kind": "expectation", "name": f"Ramp month {k} expectation",
-                     "ramp_month": k, "period": "", "complete": "", "status": "", "went_live": "", "now": "",
+                     "ramp_month": k, "period": "", "complete": "", "day_in": None, "month_days": None, "status": "", "went_live": "", "now": "",
                      "sched": ex["sched"], "live": ex["live"], "show_rate": SHOW_EXPECT, "offers": None,
                      "closes": ex["closes"], "cash": ex["cash"], "ctc": ex["ctc"],
                      "below_sched": False, "below_live": False, "below_closes": False, "below_cash": False,
