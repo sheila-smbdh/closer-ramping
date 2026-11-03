@@ -13,7 +13,10 @@
     "Kevin",
     "Kevin Manuel"
    ],
-   "cohort": "kds"
+   "cohort": "kds",
+   "commission_pct": 0.08,
+   "replacement_deadline": null,
+   "referral_payout_status": "Expired - Paid"
   },
   {
    "name": "Daniel",
@@ -27,7 +30,10 @@
     "Daniel",
     "Daniel Jenkins"
    ],
-   "cohort": "kds"
+   "cohort": "kds",
+   "commission_pct": null,
+   "replacement_deadline": null,
+   "referral_payout_status": null
   },
   {
    "name": "Solomon",
@@ -41,7 +47,10 @@
     "Solomon",
     "Solomon House"
    ],
-   "cohort": "kds"
+   "cohort": "kds",
+   "commission_pct": 0.08,
+   "replacement_deadline": null,
+   "referral_payout_status": "Expired - Paid"
   },
   {
    "name": "Oliver",
@@ -56,7 +65,10 @@
     "Oliver"
    ],
    "cohort": "ot",
-   "close_user_id": "user_GTts5Wcmueh0bn5bIMYXgF2TuvZ9qwKXu1kk9s0oLaT"
+   "close_user_id": "user_GTts5Wcmueh0bn5bIMYXgF2TuvZ9qwKXu1kk9s0oLaT",
+   "commission_pct": 0.06,
+   "replacement_deadline": "2026-12-25",
+   "referral_payout_status": "Harry Referral"
   },
   {
    "name": "Tyler",
@@ -71,7 +83,10 @@
     "Tyler"
    ],
    "cohort": "ot",
-   "close_user_id": "user_G5MW8qwDBNVPFYs9zFGoGUt834xgUxqbHSnCMD8t19U"
+   "close_user_id": "user_G5MW8qwDBNVPFYs9zFGoGUt834xgUxqbHSnCMD8t19U",
+   "commission_pct": 0.06,
+   "replacement_deadline": "2026-11-09",
+   "referral_payout_status": "Closers.io"
   },
   {
    "name": "Quinn",
@@ -136,7 +151,10 @@
    "eod_names": [
     "Harry",
     "Harry Whyte"
-   ]
+   ],
+   "commission_pct": 0.08,
+   "replacement_deadline": null,
+   "referral_payout_status": "Expired - Paid"
   },
   {
    "name": "Nick",
@@ -148,7 +166,10 @@
    "eod_names": [
     "Nick",
     "Nick Vaughan"
-   ]
+   ],
+   "commission_pct": 0.08,
+   "replacement_deadline": null,
+   "referral_payout_status": "Expired - Paid"
   },
   {
    "name": "Julien",
@@ -160,7 +181,10 @@
    "eod_names": [
     "Julien",
     "Julien Breteau"
-   ]
+   ],
+   "commission_pct": null,
+   "replacement_deadline": null,
+   "referral_payout_status": "Expired - Paid"
   },
   {
    "name": "Chris",
@@ -171,7 +195,10 @@
    "tracker_id": "chris",
    "eod_names": [
     "Chris"
-   ]
+   ],
+   "commission_pct": null,
+   "replacement_deadline": null,
+   "referral_payout_status": null
   },
   {
    "name": "Avery",
@@ -179,7 +206,10 @@
    "status": "out",
    "org_start": "2026-08-31",
    "go_live": null,
-   "note": "Never went live; let go 9/16"
+   "note": "Never went live; let go 9/16",
+   "commission_pct": null,
+   "replacement_deadline": null,
+   "referral_payout_status": null
   },
   {
    "name": "Owen",
@@ -192,7 +222,10 @@
     "Owen",
     "Owen Henderson"
    ],
-   "comparison_only": true
+   "comparison_only": true,
+   "commission_pct": null,
+   "replacement_deadline": null,
+   "referral_payout_status": null
   },
   {
    "name": "Jay Z",
@@ -264,6 +297,7 @@
    "Tyler"
   ],
   "past_snapshot": "2026-10-29",
-  "slack_channel": "C0CD29P851Q"
+  "slack_channel": "C0CD29P851Q",
+  "_roster_fields_note": "commission_pct, replacement_deadline and referral_payout_status mirror the New Hire Tracker Roster tab ('Closing Commission %', 'Deadline', 'Referral Payout Status'), copied 11/3. Update them here when the sheet changes."
  }
 }
