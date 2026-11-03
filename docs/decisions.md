@@ -20,6 +20,7 @@
 - Self-set phase: ~5–6 booked setter calls + 1–2 closer calls daily.
 - Pre-ramp month 1: ~20 closer calls, 15% CTC. Pre-ramp month 2: ~40 closer calls, 15% CTC. Below 15% → not ascended.
 - After closer calendar go-live: same ramp months 1–3 targets and cuts as new hire closers.
+- Owen is out of every ramp comparison (Sheila, 11/3). He ramped in 2025, when the company was very different. The new-hire comparison set is Nick, Julien, Harry, Chris, Kevin, Daniel and Solomon.
 - Comparison set (past promotes): Jay Z (Jordan Zadrozny), EJ (Ezra Isla), Omar (Omar Kaddoura).
 
 ## Sources
