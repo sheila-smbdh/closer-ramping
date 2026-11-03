@@ -102,7 +102,7 @@ class Sheets:
         closes and cash from the Sales Tracker."""
         eod, st = self._eod_days(p), self._st_days(p)
         out = {"sched": 0, "live": 0, "offers": 0, "closes": 0, "cash": 0,
-               "eod_days": 0, "filled_days": [], "inferred_days": []}
+               "eod_days": 0, "filled_days": [], "inferred_days": [], "resched_removed": 0}
         cur = s
         while cur <= e:
             k = cur.isoformat()
@@ -114,7 +114,16 @@ class Sheets:
                     showed = max(0, sched - (r["no_showed"] or 0) - (r["cancelled"] or 0) - (r["rescheduled"] or 0))
                     if sched:
                         out["inferred_days"].append(cur)
-                out["sched"] += sched
+                # Sheila's rules (11/3): a call rescheduled before it happens (the day before, or the same day before
+                # the call) is not a scheduled call; a same-day cancel and a no-show (even if rebooked afterwards)
+                # are. EOD "scheduled" usually includes that day's reschedules (scheduled = showed + no-shows +
+                # cancels + reschedules on most reports), so they come off, but never below the calls that
+                # showed, no-showed or cancelled that day.
+                floor = showed + (r["no_showed"] or 0) + (r["cancelled"] or 0)
+                adj = max(floor, sched - (r["rescheduled"] or 0)) if r["rescheduled"] else sched
+                if adj != sched:
+                    out["resched_removed"] += sched - adj
+                out["sched"] += adj
                 out["live"] += showed
                 out["offers"] += r["offers_made"] or 0
                 out["eod_days"] += 1
