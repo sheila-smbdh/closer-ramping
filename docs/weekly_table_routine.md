@@ -1,11 +1,11 @@
 # Weekly ramp table: routines
 
-Two routines post the same ramp table, as an image, for the reps in `config/roster.json` → `weekly_table.reps`:
+The ramp table is posted, as an image, for the reps in `config/roster.json` → `weekly_table.reps`:
 
 | Routine | When (ET) | Channel |
 |---|---|---|
-| Weekly ramp table (paused 11/3; Sheila kept the Friday post only) | Monday morning | #new-hire-onboarding (`C0CD29P851Q`, Sheila and Jay only) |
-| Friday ramp table | Friday afternoon | #sales-leadership (`C0ALMSYHZB6`) |
+| Saturday ramp table (the one weekly send, from 11/3) | Saturday morning, data through Friday | #new-hire-onboarding (`C0CD29P851Q`, Sheila and Jay only) |
+| Weekly ramp table (paused 11/3) | Monday morning | #new-hire-onboarding (`C0CD29P851Q`) |
 
 What the image holds:
 - One table per group of reps in the same ramp month. Reps within 3 days of each other share a table; anyone else gets their own, at their own current day.
