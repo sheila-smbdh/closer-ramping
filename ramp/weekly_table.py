@@ -157,18 +157,38 @@ def build(run_date, reps=None, separate=False):
     past_data = Data(base)
     cw = json.loads((base / "close_discovery_windows.json").read_text())
 
-    # Which ramp month each rep is in as of yesterday.
-    groups = {}
+    # Which ramp month each rep is in as of yesterday. A rep whose ramp month 3 ended in the last 7 days
+    # gets a final month 3 table (Sheila, 11/3: Kevin and Solomon's send when they finish month 3).
+    placed = []
     for n in (reps or cfg["reps"]):
         gl = d(people[n]["go_live"])
         k = next((k for k in range(1, 4) if add_months(gl, k - 1) <= through < add_months(gl, k)), None)
         if k:
-            groups.setdefault((k, n) if separate else (k, ""), []).append(n)
+            m = cur.measure(people[n], k, through)
+            month_len = (add_months(gl, k) - add_months(gl, k - 1)).days
+            # Yesterday was the last day of month 3: the ramp is done, so show the final table.
+            placed.append((k, k == 3 and m["day"] == month_len, m["day"], n))
+        else:
+            m3_end = add_months(gl, 3) - timedelta(days=1)
+            if 0 <= (through - m3_end).days < 7:
+                placed.append((3, True, (m3_end - add_months(gl, 2)).days + 1, n))
+    # Reps in the same month within 3 days of each other share a table (at the earliest day); others get their own.
+    groups = []
+    for k, final, day_, n in sorted(placed):
+        g = groups[-1] if groups else None
+        if (not separate and g and g["k"] == k and g["final"] == final
+                and (final or day_ - g["day"] <= 3)):
+            g["names"].append(n)
+        else:
+            groups.append({"k": k, "final": final, "day": day_, "names": [n]})
 
     tables = []
-    for (k, _), names in sorted(groups.items()):
+    for g in groups:
+        k, names, final = g["k"], g["names"], g["final"]
         firsts = [cur.measure(people[n], k, through) for n in names]
         day = min(m["day"] for m in firsts)
+        if final:
+            day = max(m["day"] for m in firsts)  # whole month; past closers are compared on their full month
         rows = [cur.measure(people[n], k, add_months(d(people[n]["go_live"]), k - 1) + timedelta(days=day - 1)) for n in names]
         for r, f in zip(rows, firsts):
             r["latest"] = f if f["day"] > day else None
@@ -176,7 +196,7 @@ def build(run_date, reps=None, separate=False):
         for n in PAST:
             if n in names:
                 continue
-            at = measure(n, people[n], past_data, cw, k, day)
+            at = measure(n, people[n], past_data, cw, k, None if final else day)
             full = measure(n, people[n], past_data, cw, k)
             if not at or full["days"] < full["total_days"]:
                 continue  # hasn't finished this month in the base snapshot
@@ -188,7 +208,7 @@ def build(run_date, reps=None, separate=False):
                          "f_cash": full["cash"]})
         allrows = sorted(rows + past, key=lambda r: (r["go_live"].day, r["go_live"]))
         tables.append({"month": k, "day": day, "rows": allrows, "current": rows, "past": past, "through": through,
-                       "people": people, "left": left})
+                       "people": people, "left": left, "final": final})
     return tables
 
 
@@ -218,7 +238,9 @@ def table_html(t):
         star = " *" if r["cur"] and (r["missing"] or r["estimated"] or r["flagged"] or r["cash_no_eod"]) else ""
         same = (f'<td class="gs">{r["live"]}{star}</td><td>{r["closes"]}</td><td>{ctc(r["closes"], r["live"])}</td>'
                 f'<td>{fmt_money(r["cash"])}</td>')
-        if r["cur"]:
+        if t.get("final"):
+            full = ""  # month is over: the same-day block already is the full month
+        elif r["cur"]:
             full = '<td class="gs ip" colspan="4">in progress</td>'
         else:
             full = (f'<td class="gs">{r["f_live"]}</td><td>{r["f_closes"]}</td><td>{ctc(r["f_closes"], r["f_live"])}</td>'
@@ -227,12 +249,15 @@ def table_html(t):
         trs.append(f'<tr{cls}><td>{escape(r["name"])}</td><td>{r["go_live"]:%m/%d/%y}</td>'
                    f'<td>day {month_end_day(r["go_live"], k)}</td>{same}{full}</tr>')
     m = median_row(t["past"])
+    med_full = "" if t.get("final") else (f'<td class="gs">{num(m["f_live"])}</td><td>{num(m["f_closes"])}</td>'
+                                         f'<td>{round(m["f_ctc"] * 100)}%</td><td>{fmt_money(m["f_cash"])}</td>')
     trs.append(f'<tr class="med"><td>Past median</td><td></td><td></td><td class="gs">{num(m["live"])}</td><td>{num(m["closes"])}</td>'
-               f'<td>{round(m["ctc"] * 100)}%</td><td>{fmt_money(m["cash"])}</td><td class="gs">{num(m["f_live"])}</td>'
-               f'<td>{num(m["f_closes"])}</td><td>{round(m["f_ctc"] * 100)}%</td><td>{fmt_money(m["f_cash"])}</td></tr>')
-    when = ", ".join(f'{r["end"]:%-m/%-d} for {r["name"]}' for r in t["current"])
+               f'<td>{round(m["ctc"] * 100)}%</td><td>{fmt_money(m["cash"])}</td>{med_full}</tr>')
+    when = ", ".join(f'{"ended " if t.get("final") else ""}{r["end"]:%-m/%-d} for {r["name"]}' for r in t["current"])
     notes = [f"Month end falls on = the day of their ramp month {k} that the calendar month ended on (e.g. day 26 means the 31st was day 26 of their ramp month). "
-             f"Sorted by the day of the month each closer went live. Everyone is shown at day {day} of ramp month {k} ({when}). "
+             f"Sorted by the day of the month each closer went live. "
+             + (f"Ramp month {k} is complete ({when}); everyone is shown on their full month {k}. " if t.get("final")
+                else f"Everyone is shown at day {day} of ramp month {k} ({when}). ") +
              "CTC = closes ÷ live calls; medians are taken column by column."]
     star = []
     for r0 in t["current"]:
@@ -270,10 +295,18 @@ def table_html(t):
         if bits:
             subs.append(f'<p class="sub"><b>{escape(r["name"])}</b>: {" · ".join(bits)}</p>')
     who = f'{t["current"][0]["name"]} · ' if len(t["current"]) == 1 else ""
-    return (f'<section><h2>{who}Ramp month {k} · day {day}</h2>' + "".join(subs) +
-            f'<table><thead><tr><th></th><th></th><th></th><th colspan="4" class="grp">Day {day} of month {k}</th><th colspan="4" class="grp">Full month {k}</th></tr>'
+    if t.get("final"):
+        title = f'{who}Ramp month {k} · complete'
+        grp = f'<th colspan="4" class="grp">Full month {k}</th>'
+        cols = ""
+    else:
+        title = f'{who}Ramp month {k} · day {day}'
+        grp = f'<th colspan="4" class="grp">Day {day} of month {k}</th><th colspan="4" class="grp">Full month {k}</th>'
+        cols = '<th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
+    return (f'<section><h2>{title}</h2>' + "".join(subs) +
+            f'<table><thead><tr><th></th><th></th><th></th>{grp}</tr>'
             '<tr><th>Closer</th><th>Went live</th><th>Month end falls on</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
-            '<th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead>'
+            f'{cols}</tr></thead>'
             f'<tbody>{"".join(trs)}</tbody></table>' + "".join(f'<p class="foot">{escape(n)}</p>' for n in notes) + "</section>")
 
 
@@ -315,7 +348,7 @@ def render(run_date, reps=None, prefix="weekly_table", separate=False):
     (out / f"{prefix}.html").write_text(html)
     md = [f"Ramp table, data through {through:%-m/%-d}"]
     for t in tables:
-        md.append(f"Month {t['month']}, day {t['day']}: " + "; ".join(
+        md.append((f"Month {t['month']} complete: " if t.get("final") else f"Month {t['month']}, day {t['day']}: ") + "; ".join(
             f"{r['name']} {r['live']} live, {r['closes']} close{"" if r['closes'] == 1 else "s"}, {fmt_money(r['cash'])}" for r in t["current"])
             + f" (past median {num(median_row(t['past'])['live'])} live, {fmt_money(median_row(t['past'])['cash'])})")
     (out / f"{prefix}.md").write_text("\n".join(md) + "\n")

@@ -1,6 +1,15 @@
-# Weekly ramp table: Monday routine
+# Weekly ramp table: routines
 
-Posts the "everyone at the same point in the ramp month" table, as an image, to #new-hire-onboarding (`C0CD29P851Q`, Sheila and Jay only). It runs every Monday morning, US Eastern. Which reps it covers is set in `config/roster.json` → `weekly_table.reps`.
+Two routines post the same ramp table, as an image, for the reps in `config/roster.json` → `weekly_table.reps`:
+
+| Routine | When (ET) | Channel |
+|---|---|---|
+| Weekly ramp table | Monday morning | #new-hire-onboarding (`C0CD29P851Q`, Sheila and Jay only) |
+| Friday ramp table | Friday afternoon | #sales-leadership (`C0ALMSYHZB6`) |
+
+What the image holds:
+- One table per group of reps in the same ramp month. Reps within 3 days of each other share a table; anyone else gets their own, at their own current day.
+- In the week after a rep's ramp month 3 ends (including when yesterday was its last day), they get one final "Ramp month 3 · complete" table against past closers' full month 3. After that they drop out on their own.
 
 The method is fixed (docs/decisions.md). Do not change how numbers are counted in a run.
 
@@ -22,7 +31,7 @@ The method is fixed (docs/decisions.md). Do not change how numbers are counted i
    Keep paging while `has_more` is true. An empty `$CLOSE_API_KEY` is expected, because the proxy adds the login. Only if the API call itself fails (401/403/5xx/network), fall back to the Close connector and save the same meeting fields.
 6. Build: `python3 -m ramp.weekly_table $DATE`. It writes `outputs/$DATE/weekly_table.png`, `.html` and `.md`.
 7. Look at the PNG. Check that each ramping rep's row is filled in and that the day and dates in the footnote are right. If a rep shows 0 live calls with EODs in the channel, the parser missed a format: fix `ramp/slack_eod.py`, rerun, and say so in the run summary.
-8. Post to Slack: `slack_get_file_upload_url` (filename `ramp_table_$DATE.png`, exact byte size, alt text from `weekly_table.md`), POST the bytes with curl (`Content-Type: image/png`), then `slack_complete_file_upload` with `channel_id` `C0CD29P851Q`, title `Ramp table, data through <M/D>`, and a one-line `initial_comment` from `weekly_table.md`. Add any failed tracker check to the comment. Post only to this channel, and post only this one file.
+8. Post to Slack: `slack_get_file_upload_url` (filename `ramp_table_$DATE.png`, exact byte size, alt text from `weekly_table.md`), POST the bytes with curl (`Content-Type: image/png`), then `slack_complete_file_upload` with the `channel_id` for this routine (table above), title `Ramp table, data through <M/D>`, and a one-line `initial_comment` from `weekly_table.md`. Add any failed tracker check to the comment. Post only to that one channel, and post only this one file.
    - If nobody on the list is in ramp months 1–3, post nothing. End the run and say that `weekly_table.reps` needs updating.
 9. Commit `data/snapshots/$DATE` and `outputs/$DATE`, then push to `claude/weekly-ramp-table`. Don't open a PR.
 
