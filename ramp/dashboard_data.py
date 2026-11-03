@@ -1,23 +1,24 @@
 """Rows for the ramp months 1-3 dashboard: every 2026 new-hire closer, each ramp month they've started.
 
 Usage: python3 -m ramp.dashboard_data <YYYY-MM-DD>
-Reads the same inputs as ramp.weekly_table (data/snapshots/<date>/ plus the base snapshot) and writes
-outputs/<date>/ramp_dashboard.json: {"through": ..., "rows": [...]}.
+Reads data/snapshots/<date>/eod_tracker.json and sales_inputs.json (written by ramp.sheets from the EOD Tracker
+and Sales Tracker 2026) and writes outputs/<date>/ramp_dashboard.json: {"through": ..., "rows": [...]}.
 
-Same method as the weekly table (docs/decisions.md):
+Method (Sheila, 11/3; same as the closer-scorecard repo):
 - Ramp month k = calendar month counted from go-live (first 45-min discovery call held).
-- Scheduled = 45-min discovery bookings in Close (held or no-show, cancels left out).
-- Live calls = EOD shows capped each day at those bookings; closes and offers from EOD; cash from the 2M tracker.
-- Show rate = live ÷ scheduled. CTC = closes ÷ live.
-- Months that ended before the base snapshot come from it; later ones from the fresh pulls.
+- Sched. calls, live calls and offers: EOD Tracker, as each closer reported them; the Sales Tracker on days with
+  no EOD. A blank EOD "showed" = scheduled - no-shows - cancels - reschedules.
+- Closes (Close 1) and cash: Sales Tracker Inputs.
+- Show rate = live / scheduled. CTC = closes / live.
 """
 import json
 import sys
 from datetime import timedelta
 
-from ramp.build import ROOT, Data, add_months, d
-from ramp.compare import EXPECT, measure
-from ramp.weekly_table import Current
+from ramp.build import ROOT, add_months, d
+from ramp.compare import EXPECT
+from ramp.sheets import Sheets
+from ramp.weekly_table import SheetCurrent
 
 SHOW_EXPECT = 0.75  # the New Hire Tracker's show rate expectation
 
@@ -34,12 +35,9 @@ def build(run_date):
     roster = json.loads((ROOT / "config/roster.json").read_text())
     people = {p["name"]: p for p in roster["people"]}
     cfg = roster["dashboard"]
-    base = ROOT / "data/snapshots" / roster["weekly_table"]["past_snapshot"]
     snap = ROOT / "data/snapshots" / run_date
     through = d(run_date) - timedelta(days=1)
-    past = Data(base)
-    cw = json.loads((base / "close_discovery_windows.json").read_text())
-    cur = Current(snap, people, base)
+    cur = SheetCurrent(Sheets(snap))
     rows = []
     for n in cfg["reps"]:
         p = people[n]
@@ -51,16 +49,9 @@ def build(run_date):
                 continue
             complete = e <= through
             length = (e - s).days + 1
-            if n in cfg["live_reps"] and e > past.through:
-                m = cur.measure(p, k, through)
-                sched, live, offers, closes, cash = m["sched"], m["live"], m["offers"], m["closes"], m["cash"]
-                src = "fresh"
-            else:
-                m = measure(n, p, past, cw, k)
-                if m is None or m["days"] < m["total_days"]:
-                    continue  # finished after the base snapshot but not refreshed: leave it out rather than show a partial month
-                sched, live, offers, closes, cash = m["sched"], int(m["live"]), int(m["offers"]), int(m["closes"]), m["cash"]
-                src = "snapshot"
+            m = cur.measure(p, k, through)
+            sched, live, offers, closes, cash = m["sched"], m["live"], m["offers"], m["closes"], m["cash"]
+            src = "sheets"
             if complete and not live and not cash:
                 continue  # already gone that month (Chris, month 3): an all-zero row says nothing
             day_in = min((through - s).days + 1, length)
