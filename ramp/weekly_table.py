@@ -4,17 +4,13 @@ Usage: python3 -m ramp.weekly_table <YYYY-MM-DD>
 Reads:
   config/roster.json            go-live dates, eod_names, and "weekly_table" (which reps, which base snapshot)
   data/snapshots/<base>/        past closers (EOD snapshot, Close bookings, 2M tracker months)
-  data/snapshots/<date>/        closers_YYYY-MM.json from the 2M tracker read API, eod_slack.json from ramp.slack_eod
+  data/snapshots/<date>/        eod_tracker.json and sales_inputs.json from ramp.sheets
 Writes outputs/<date>/weekly_table.html, weekly_table.png and weekly_table.md.
 
-Method (agreed with Sheila 11/2, see docs/decisions.md):
+Method (Sheila, 11/3; see docs/decisions.md and docs/sheets.md):
 - Ramp month k = calendar month counted from go-live (first 45-min discovery call held).
 - Everyone is compared at the same day of that month: the ramping reps' day as of yesterday.
-- Cash: 2M tracker. Live calls and closes: EOD reports. Past closers use the EOD snapshot, capped each day at their
-  45-min Close bookings. Ramping reps use #closer-eod, capped the same way with fresh Close meetings
-  (data/snapshots/<date>/close_meetings_*.json). Only 45-minute discovery calls count; 15-minute intro (setter)
-  calls don't, until Zoom length can show which intros ran long enough to count (Sheila, 11/2).
-- A ramping rep's EOD close counts only if cash was collected that day (EOD or tracker); otherwise it's flagged.
+- Live calls and offers: EOD Tracker, as reported (Sales Tracker on days with no EOD). Closes and cash: Sales Tracker.
 - Rows are sorted by the day of the month each closer went live, so similar start days sit together.
 """
 import csv
@@ -26,7 +22,8 @@ from datetime import date, datetime, timedelta
 from html import escape
 
 from ramp.build import ROOT, Data, add_months, d, money
-from ramp.compare import PAST, measure
+from ramp.compare import PAST
+from ramp.sheets import Sheets
 
 
 
@@ -149,6 +146,29 @@ class Current:
                 "cash_no_eod": cash_no_eod}
 
 
+class SheetCurrent:
+    """Ramp-month numbers from the EOD Tracker and Sales Tracker (ramp.sheets), in the shape the tables use.
+
+    Since 11/3 (Sheila): scheduled, live calls and offers come from the EOD Tracker (Sales Tracker on days with no
+    EOD); closes and cash from the Sales Tracker. Close bookings are no longer used.
+    """
+
+    def __init__(self, sheets):
+        self.sh = sheets
+
+    def measure(self, p, k, upto):
+        gl = d(p["go_live"])
+        s = add_months(gl, k - 1)
+        end = add_months(gl, k) - timedelta(days=1)
+        e = min(end, upto)
+        m = self.sh.measure(p, s, e)
+        return {"name": p["name"], "go_live": gl, "live": m["live"], "closes": m["closes"], "offers": m["offers"],
+                "sched": m["sched"], "cash": m["cash"], "cur": True, "day": (e - s).days + 1, "end": e,
+                "days": (e - s).days + 1, "total_days": (end - s).days + 1,
+                "filled": m["filled_days"], "estimated": m["inferred_days"],
+                "missing": [], "flagged": [], "cash_no_eod": []}
+
+
 def build(run_date, reps=None, separate=False):
     roster = json.loads((ROOT / "config/roster.json").read_text())
     people = {p["name"]: p for p in roster["people"]}
@@ -156,9 +176,7 @@ def build(run_date, reps=None, separate=False):
     snap = ROOT / "data/snapshots" / run_date
     base = ROOT / "data/snapshots" / cfg["past_snapshot"]
     through = d(run_date) - timedelta(days=1)
-    cur = Current(snap, people, base)
-    past_data = Data(base)
-    cw = json.loads((base / "close_discovery_windows.json").read_text())
+    cur = SheetCurrent(Sheets(snap))
 
     # Which ramp month each rep is in as of yesterday. A rep whose ramp month 3 ended in the last 7 days
     # gets a final month 3 table (Sheila, 11/3: Kevin and Solomon's send when they finish month 3).
@@ -199,10 +217,11 @@ def build(run_date, reps=None, separate=False):
         for n in PAST:
             if n in names:
                 continue
-            at = measure(n, people[n], past_data, cw, k, None if final else day)
-            full = measure(n, people[n], past_data, cw, k)
-            if not at or full["days"] < full["total_days"]:
-                continue  # hasn't finished this month in the base snapshot
+            gl = d(people[n]["go_live"])
+            if add_months(gl, k) - timedelta(days=1) > through:
+                continue  # hasn't finished this month yet
+            full = cur.measure(people[n], k, through)
+            at = full if final else cur.measure(people[n], k, add_months(gl, k - 1) + timedelta(days=day - 1))
             if not full["live"] and not full["cash"]:
                 left.append(n)  # had already left; an all-zero month would drag the median down
                 continue
@@ -238,7 +257,7 @@ def table_html(t):
     k, day = t["month"], t["day"]
     trs = []
     for r in t["rows"]:
-        star = " *" if r["cur"] and (r["missing"] or r["estimated"] or r["flagged"] or r["cash_no_eod"]) else ""
+        star = " *" if r["cur"] and (r["missing"] or r["estimated"] or r["flagged"] or r["cash_no_eod"] or r.get("filled")) else ""
         same = (f'<td class="gs">{r["live"]}{star}</td><td>{r["closes"]}</td><td>{ctc(r["closes"], r["live"])}</td>'
                 f'<td>{fmt_money(r["cash"])}</td>')
         if t.get("final"):
@@ -268,8 +287,11 @@ def table_html(t):
         bits = []
         if r["missing"]:
             bits.append("no EOD on " + ", ".join(f"{x:%-m/%-d}" for x in r["missing"]))
+        if r.get("filled"):
+            bits.append("no EOD, so the Sales Tracker was used on " + ", ".join(f"{x:%-m/%-d}" for x in r["filled"]))
         if r["estimated"]:
-            bits.append("shows estimated from the call list on " + ", ".join(f"{x:%-m/%-d}" for x in r["estimated"]))
+            bits.append("blank EOD \"showed\" worked out as scheduled minus no-shows, cancels and reschedules on "
+                        + ", ".join(f"{x:%-m/%-d}" for x in r["estimated"]))
         for day_, amt in r["cash_no_eod"]:
             bits.append(f"{fmt_money(amt)} collected on {day_:%-m/%-d} with no EOD, so any close that day isn't counted")
         for day_, cl in r["flagged"]:
@@ -340,8 +362,8 @@ def render(run_date, reps=None, prefix="weekly_table", separate=False):
     out = ROOT / "outputs" / run_date
     out.mkdir(parents=True, exist_ok=True)
     through = d(run_date) - timedelta(days=1)
-    sources = ("Live calls = 45-minute discovery calls: EOD shows capped each day at 45-min Close bookings "
-               "(intro calls left out; Nick, Julien, Harry and Chris predate the Close data and are uncapped). Closes: EOD reports. Cash: 2M tracker.")
+    sources = ("Live calls and offers: EOD Tracker (the Sales Tracker on days with no EOD). "
+               "Closes and cash: Sales Tracker Inputs.")
     html = ("<!doctype html><html><head><meta charset='utf-8'>"
             "<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap'>"
             f"<style>{CSS}</style></head><body><div class='wrap'>"
