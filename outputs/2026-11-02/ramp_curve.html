@@ -15,7 +15,7 @@
   --bg:#121413; --surface:#1a1c1b; --ink:#eef0ed; --ink2:#c0c5c1; --muted:#8e958f; --grid:#2c302d;
   --past:#4a504c; --median:#c0c5c1; --oliver:#3987e5; --tyler:#d95926; --target:#2fa52f; --floor:#d9a12a; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
-.wrap{max-width:1120px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.wrap{max-width:880px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
 h1{font:800 clamp(24px,4vw,32px)/1.1 var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
 h2{font:700 18px/1.2 var(--display);margin:0}
 .lede{color:var(--ink2);margin:6px 0 0;max-width:68ch}
@@ -51,6 +51,9 @@ thead th.grp{text-align:center;border-bottom:1px solid var(--grid);color:var(--i
 td.gs,thead tr:last-child th.gs{border-left:1px solid var(--grid)}
 .notes{font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:6px;max-width:72ch}
 .notes p{margin:0}
+.subs{display:flex;flex-direction:column;gap:2px;color:var(--ink2);font-size:14px}
+.subs b{color:var(--ink);font-weight:600}
+.subs .sw{width:10px;height:10px;margin-right:6px;vertical-align:0}
 </style>
 
 <div class="wrap">
@@ -63,6 +66,7 @@ td.gs,thead tr:last-child th.gs{border-left:1px solid var(--grid)}
 
   <section class="card">
     <h2 id="tabletitle"></h2>
+    <div id="subs" class="subs"></div>
     <div class="tablewrap"><table id="tbl"></table></div>
   </section>
 
@@ -89,6 +93,8 @@ const MED = {cash: medianSeries("cash"), live: medianSeries("live")};
 // Standings table: same-day columns, then full month 1 for past closers.
 const D = Math.min(...CUR.map(n=>DATA[n].cash.length)), LD = Math.min(...CUR.map(n=>DATA[n].live.length));
 document.getElementById("tabletitle").textContent = `Everyone at the same point in month 1`;
+const expLong = n => { const x = ROSTER[n] && ROSTER[n].x; if (!x) return null; const dt = new Date(x + "T12:00:00"); return dt.toLocaleDateString("en-US", {weekday:"short", month:"numeric", day:"numeric", year:"2-digit"}); };
+document.getElementById("subs").innerHTML = CUR.map(n => { const bits = []; if (ROSTER[n] && ROSTER[n].c != null) bits.push(comm(n) + " commission"); const e = expLong(n); if (e) bits.push("replacement expires " + e); return bits.length ? `<div><span class="sw" style="background:${COLOR[n]}"></span><b>${n}</b>: ${bits.join(" · ")}</div>` : ""; }).join("");
 const pct = (c,l) => l ? Math.round(c/l*100) + "%" : "–";
 const rows = Object.keys(DATA).map(n => { const d = DATA[n], f = d.current ? null : d.live.length - 1;
   return {n, cur:d.current, cash:d.cash[D-1], live:d.live[LD-1], cl:d.closes[LD-1],
@@ -99,13 +105,13 @@ const mdCtc = k => median(P.map(r => r[k[1]] ? r[k[0]]/r[k[1]] : 0));
 const sw = r => r.cur ? `<span class="sw" style="background:${COLOR[r.n]};margin-right:8px;vertical-align:-1px"></span>` : "";
 const star = r => r.cur ? " *" : "";
 document.getElementById("tbl").innerHTML =
-  `<thead><tr><th></th><th></th><th></th><th></th><th colspan="4" class="grp">By day ${D}</th><th colspan="4" class="grp">Full month 1</th></tr>
-   <tr><th>Closer</th><th>Went live</th><th>Commission</th><th>Replacement expiry</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead><tbody>` +
-  rows.map(r=>`<tr class="${r.cur?"cur":""}"><td>${sw(r)}${r.n}</td><td>${DATA[r.n].go_live.slice(5).replace("-","/")}/${DATA[r.n].go_live.slice(2,4)}</td><td>${comm(r.n)}</td><td>${expiry(r.n)}</td>
+  `<thead><tr><th></th><th></th><th colspan="4" class="grp">By day ${D}</th><th colspan="4" class="grp">Full month 1</th></tr>
+   <tr><th>Closer</th><th>Went live</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th><th>Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead><tbody>` +
+  rows.map(r=>`<tr class="${r.cur?"cur":""}"><td>${sw(r)}${r.n}</td><td>${DATA[r.n].go_live.slice(5).replace("-","/")}/${DATA[r.n].go_live.slice(2,4)}</td>
     <td class="gs">${r.live}${star(r)}</td><td>${r.cl}</td><td>${pct(r.cl,r.live)}</td><td>${fmt$(r.cash)}</td>
     ${r.cur ? `<td class="gs" colspan="4" style="text-align:center;color:var(--muted);font-weight:400">in progress</td>` :
       `<td class="gs">${r.fLive}</td><td>${r.fCl}</td><td>${pct(r.fCl,r.fLive)}</td><td>${fmt$(r.fCash)}</td>`}</tr>`).join("") +
-  `<tr class="med"><td>Past median</td><td></td><td></td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td>${fmt$(md("cash"))}</td>
+  `<tr class="med"><td>Past median</td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td>${fmt$(md("cash"))}</td>
     <td class="gs">${md("fLive")}</td><td>${md("fCl")}</td><td>${Math.round(mdCtc(["fCl","fLive"])*100)}%</td><td>${fmt$(md("fCash"))}</td></tr></tbody>`;
-document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Commission = closing commission %. Replacement expiry = the date the replacement for that hire expires. Both come from the New Hire Tracker Roster tab, and – means none on file. Sorted by the day of the month each closer went live. Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. Live calls = 45-minute discovery calls only: each day's EOD shows are capped at that day's 45-minute bookings in Close, so 15-minute intro (setter) calls aren't counted. Kevin, Daniel and Solomon are capped the same way; Owen, Nick, Julien, Harry and Chris ramped before the Close data I have (it starts 8/1), so theirs are uncapped EOD shows. CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
+document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Sorted by the day of the month each closer went live. Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. Live calls = 45-minute discovery calls only: each day's EOD shows are capped at that day's 45-minute bookings in Close, so 15-minute intro (setter) calls aren't counted. Kevin, Daniel and Solomon are capped the same way; Owen, Nick, Julien, Harry and Chris ramped before the Close data I have (it starts 8/1), so theirs are uncapped EOD shows. CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
 </script>
