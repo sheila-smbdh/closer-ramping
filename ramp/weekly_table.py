@@ -71,7 +71,8 @@ class Current:
             for r in csv.DictReader(open(base / "eod.csv")):
                 self.base_eod.append({"name": r["closer_name"].strip(), "date": r["report_date"][:10],
                                       "showed": num(r["showed"]) or 0, "showed_estimated": False,
-                                      "closed": num(r["closed"]), "cash": num(r["cash_collected"])})
+                                      "closed": num(r["closed"]), "cash": num(r["cash_collected"]),
+                                      "offers": num(r["offers_made"])})
         # 45-min discovery bookings per Close user per ET day (canceled / declined-by-org left out).
         self.booked = {}
         seen = set()
@@ -119,10 +120,11 @@ class Current:
         s = add_months(gl, k - 1)
         e = min(add_months(gl, k) - timedelta(days=1), upto)
         eod = self.eod_by_day(p)
-        live = closes = 0
+        live = closes = offers = sched = 0
         flagged, missing, estimated, cash_no_eod = [], [], [], []
         cur = s
         while cur <= e:
+            sched += self.booked.get((p["close_user_id"], cur), 0)
             r = eod.get(cur)
             if r is None:
                 if cur.weekday() < 5:
@@ -132,6 +134,7 @@ class Current:
             else:
                 booked = self.booked.get((p["close_user_id"], cur), 0)
                 live += min(r["showed"] or 0, booked)
+                offers += r.get("offers") or 0
                 if r["showed_estimated"]:
                     estimated.append(cur)
                 cl = r["closed"] or 0
@@ -140,7 +143,7 @@ class Current:
                 else:
                     closes += cl
             cur += timedelta(days=1)
-        return {"name": p["name"], "go_live": gl, "live": live, "closes": closes,
+        return {"name": p["name"], "go_live": gl, "live": live, "closes": closes, "offers": offers, "sched": sched,
                 "cash": self.cash(p["tracker_id"], s, e), "cur": True, "day": (e - s).days + 1,
                 "flagged": flagged, "missing": missing, "estimated": estimated, "end": e,
                 "cash_no_eod": cash_no_eod}
