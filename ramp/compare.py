@@ -25,7 +25,7 @@ SHEILA = {
         "Solomon": (62, 38, 27, 9, 171000)},
     3: {"Julien": (65, 42, 35, 9, 160000), "Nick": (68, 48, 29, 15, 242500), "Harry": (72, 47, 35, 13, 230500)},
 }
-PAST = ["Owen", "Nick", "Julien", "Harry", "Chris", "Kevin", "Daniel", "Solomon"]
+PAST = ["Nick", "Julien", "Harry", "Chris", "Kevin", "Daniel", "Solomon"]
 CURRENT = ["Oliver", "Tyler", "Kevin", "Daniel", "Solomon"]
 CLOSE_USERS = {"Kevin": "Kevin Manuel", "Daniel": "Daniel Jenkins", "Solomon": "Solomon House",
                "Oliver": "Oliver English", "Tyler": "Tyler Johnson"}

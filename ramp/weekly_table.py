@@ -268,7 +268,7 @@ def render(run_date):
     out.mkdir(parents=True, exist_ok=True)
     through = d(run_date) - timedelta(days=1)
     sources = ("Live calls = 45-minute discovery calls: EOD shows capped each day at 45-min Close bookings "
-               "(intro calls left out; Owen, Nick, Julien, Harry and Chris predate the Close data and are uncapped). Closes: EOD reports. Cash: 2M tracker.")
+               "(intro calls left out; Nick, Julien, Harry and Chris predate the Close data and are uncapped). Closes: EOD reports. Cash: 2M tracker.")
     html = ("<!doctype html><html><head><meta charset='utf-8'>"
             "<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap'>"
             f"<style>{CSS}</style></head><body><div class='wrap'>"
