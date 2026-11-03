@@ -4,7 +4,7 @@ Two routines post the same ramp table, as an image, for the reps in `config/rost
 
 | Routine | When (ET) | Channel |
 |---|---|---|
-| Weekly ramp table | Monday morning | #new-hire-onboarding (`C0CD29P851Q`, Sheila and Jay only) |
+| Weekly ramp table (paused 11/3; Sheila kept the Friday post only) | Monday morning | #new-hire-onboarding (`C0CD29P851Q`, Sheila and Jay only) |
 | Friday ramp table | Friday afternoon | #sales-leadership (`C0ALMSYHZB6`) |
 
 What the image holds:
