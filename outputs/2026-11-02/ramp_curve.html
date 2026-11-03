@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one reading column; two stacked same-x-axis charts (ramp day 1–31), then a day-18 standings table. */
+/* Layout: one reading column; a header, then the same-day standings table and its notes. */
 :root{
   --bg:#f7f8f6; --surface:#ffffff; --ink:#111412; --ink2:#4d5450; --muted:#848b86; --grid:#e3e6e2;
   --past:#b9beba; --median:#4d5450; --oliver:#2a78d6; --tyler:#eb6834; --target:#008300; --floor:#c98500;
@@ -57,25 +57,9 @@ td.gs,thead tr:last-child th.gs{border-left:1px solid var(--grid)}
   <header>
     <div class="eyebrow">Ramp month 1 · same-day comparison</div>
     <h1>Oliver and Tyler against every past new closer at the same ramp day</h1>
-    <p class="lede" id="lede"></p>
+    <p class="lede">Oliver went live 10/15 and Tyler 10/14. Every closer who finished month 1 before them is shown at the same day of their own month 1. Data through Sun 11/1.</p>
   </header>
 
-  <div class="tiles" id="tiles"></div>
-
-  <section class="card">
-    <h2>Cash collected, cumulative</h2>
-    <p class="sub">Each line is one closer's first ramp month, counted from their first 45-minute discovery call held. Cash through Sun 11/1.</p>
-    <div class="legend" id="legend1"></div>
-    <div class="chart" id="cash"></div>
-  </section>
-
-  <section class="card">
-    <h2>Live discovery calls, cumulative</h2>
-    <p class="sub">EOD shows capped at 45-minute Close bookings. Oliver and Tyler are through Sun 11/1.</p>
-    <div class="legend" id="legend2"></div>
-    <div class="chart" id="live"></div>
-    <p class="foot">Only 45-minute discovery calls count. Each day, a closer's EOD shows are capped at their 45-minute bookings in Close, which leaves out 15-minute intro (setter) calls. Kevin, Daniel and Solomon are capped the same way. Owen, Nick, Julien, Harry and Chris ramped before the Close data I have (it starts 8/1), so theirs are uncapped EOD shows. Oliver and Tyler have no EOD on a few days (Tyler 10/14–10/15, Oliver 10/16).</p>
-  </section>
 
   <section class="card">
     <h2 id="tabletitle"></h2>
@@ -83,8 +67,8 @@ td.gs,thead tr:last-child th.gs{border-left:1px solid var(--grid)}
   </section>
 
   <div class="notes">
-    <p><b>Sources.</b> Cash: 2M tracker read API, pulled 11/2 (Owen's 2025 cash comes from his EODs; Chris's from the Sales Tracker). Live calls and closes: EOD reports, from #closer-eod for Oliver and Tyler (read 11/2) and from the 10/29 EOD snapshot for past closers. Go-live dates: config/roster.json, from the 10/29 date check.</p>
-    <p><b>Targets.</b> Month 1 target is $100K with a $75K floor, judged at the end of the month. Cash lands late in the month for almost everyone, so a flat line in week 2–3 is common.</p>
+    <p><b>Sources.</b> Cash: 2M tracker read API, pulled 11/2 (Owen's 2025 cash comes from his EODs; Chris's from the Sales Tracker). 45-minute discovery bookings: Close, pulled 11/2. Live calls and closes: EOD reports, from #closer-eod for Oliver and Tyler (read 11/2) and from the 10/29 EOD snapshot for past closers. Go-live dates: config/roster.json, from the 10/29 date check.</p>
+    <p><b>Targets.</b> Month 1 target is $100K with a $75K floor, judged at the end of the month. Cash lands late in the month for almost everyone, so $0 at day 18 is common: Kevin and Solomon were both at $0 and finished at $88K and $104.5K.</p>
   </div>
 </div>
 
@@ -98,74 +82,6 @@ const median = a => { const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.l
 const MAXDAY = 31;
 function medianSeries(key){ const out=[]; for(let i=0;i<MAXDAY;i++){ const v=PAST.map(n=>DATA[n][key][i]).filter(x=>x!=null); if(v.length===PAST.length) out.push(median(v)); } return out; }
 const MED = {cash: medianSeries("cash"), live: medianSeries("live")};
-
-// Headline tiles: where each stands at their latest cash day vs the past median that day.
-const tiles = document.getElementById("tiles");
-CUR.forEach(n => {
-  const c = DATA[n].cash, day = c.length, v = c[day-1], med = MED.cash[day-1];
-  const past = PAST.map(p => DATA[p].cash[day-1]);
-  const ahead = past.filter(x => v > x).length, tied = past.filter(x => x === v).length;
-  tiles.insertAdjacentHTML("beforeend", `<div class="tile"><div class="who"><span class="sw" style="background:${COLOR[n]}"></span>${n} · day ${day}</div>
-    <div class="big">${fmt$(v)}</div><div class="note">Past median at day ${day}: ${fmt$(med)}. Ahead of ${ahead} of ${past.length}${tied?`, level with ${tied}`:""}.</div></div>`);
-});
-tiles.insertAdjacentHTML("beforeend", `<div class="tile"><div class="who">Past reps at day 31</div>
-  <div class="big">${fmt$(MED.cash[30])}</div><div class="note">Median full month 1. Range ${fmt$(Math.min(...PAST.map(p=>DATA[p].cash[30])))} to ${fmt$(Math.max(...PAST.map(p=>DATA[p].cash[30])))}.</div></div>`);
-
-document.getElementById("lede").textContent =
-  `Oliver went live ${DATA.Oliver.go_live.slice(5).replace("-","/")} and Tyler ${DATA.Tyler.go_live.slice(5).replace("-","/")}. ` +
-  `The coloured lines are them; the grey lines are the eight closers who finished month 1 before them (Owen, Nick, Julien, Harry, Chris, Kevin, Daniel, Solomon). Hover any day to see everyone's number.`;
-
-function legend(id, extra){
-  document.getElementById(id).innerHTML =
-    CUR.map(n=>`<span><i class="ln" style="border-color:${COLOR[n]}"></i>${n}</span>`).join("") +
-    `<span><i class="ln" style="border-color:var(--median);border-top-style:dashed"></i>Past median</span>` +
-    `<span><i class="ln" style="border-color:var(--past);border-top-width:1.5px"></i>Past closers</span>` + (extra||"");
-}
-legend("legend1", `<span><i class="ln" style="border-color:var(--target);border-top-style:dotted"></i>$100K target</span><span><i class="ln" style="border-color:var(--floor);border-top-style:dotted"></i>$75K floor</span>`);
-legend("legend2");
-
-function chart(id, key, fmt, refs){
-  const el = document.getElementById(id), W=820, H=340, m={l:52,r:78,t:12,b:34};
-  const all = Object.values(DATA).flatMap(d=>d[key]);
-  let ymax = Math.max(...all, ...(refs||[]).map(r=>r.v));
-  const step = key==="cash" ? 25000 : 10; ymax = Math.ceil(ymax/step)*step;
-  const x = d => m.l + (d-1)/(MAXDAY-1)*(W-m.l-m.r), y = v => H-m.b - v/ymax*(H-m.t-m.b);
-  const path = s => s.map((v,i)=>`${i?"L":"M"}${x(i+1).toFixed(1)},${y(v).toFixed(1)}`).join("");
-  let g = "";
-  const ystep = key==="cash" ? (ymax>150000?50000:25000) : 10;
-  for(let v=0; v<=ymax; v+=ystep) g += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${m.l-8}" y="${y(v)+4}" text-anchor="end">${fmt(v)}</text>`;
-  [1,7,14,21,28,31].forEach(d => g += `<text x="${x(d)}" y="${H-m.b+18}" text-anchor="middle">${d}</text>`);
-  g += `<text x="${(m.l+W-m.r)/2}" y="${H-2}" text-anchor="middle">Ramp day</text>`;
-  (refs||[]).forEach(r => g += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(r.v)}" y2="${y(r.v)}" stroke="${r.c}" stroke-width="1.5" stroke-dasharray="2 4"/><text x="${m.l+6}" y="${y(r.v)-5}" style="fill:${r.c}">${r.label}</text>`);
-  PAST.forEach(n => { const s=DATA[n][key]; g += `<path d="${path(s)}" fill="none" stroke="var(--past)" stroke-width="1.5" data-n="${n}"/><text x="${x(s.length)+6}" y="${y(s[s.length-1])+4}" class="pl" data-n="${n}">${n}</text>`; });
-  g += `<path d="${path(MED[key])}" fill="none" stroke="var(--median)" stroke-width="2" stroke-dasharray="6 4"/>`;
-  CUR.forEach(n => { const s=DATA[n][key]; if(!s.length) return; const ex=x(s.length), ey=y(s[s.length-1]);
-    g += `<path d="${path(s)}" fill="none" stroke="${COLOR[n]}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-          <circle cx="${ex}" cy="${ey}" r="5" fill="${COLOR[n]}" stroke="var(--surface)" stroke-width="2"/>
-          <text x="${ex+9}" y="${ey - 8}" style="fill:var(--ink);font-weight:500">${n} ${fmt(s[s.length-1])}</text>`; });
-  g += `<line id="${id}-x" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink2)" stroke-width="1" visibility="hidden"/><rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent" id="${id}-hit"/>`;
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${key} by ramp day">${g}</svg><div class="tip" hidden></div>`;
-  // Avoid overlapping past-rep end labels: nudge apart vertically.
-  const labels=[...el.querySelectorAll("text.pl")].sort((a,b)=>a.getAttribute("y")-b.getAttribute("y"));
-  for(let i=1;i<labels.length;i++){ const p=+labels[i-1].getAttribute("y"), c=+labels[i].getAttribute("y"); if(c-p<12) labels[i].setAttribute("y", p+12); }
-  const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), cross = el.querySelector(`#${id}-x`);
-  function show(evt){
-    const pt = svg.getBoundingClientRect(), sx = (evt.clientX-pt.left)/pt.width*W;
-    const day = Math.max(1, Math.min(MAXDAY, Math.round((sx-m.l)/(W-m.l-m.r)*(MAXDAY-1)+1)));
-    cross.setAttribute("x1", x(day)); cross.setAttribute("x2", x(day)); cross.setAttribute("visibility","visible");
-    const rows = Object.keys(DATA).map(n=>({n, v:DATA[n][key][day-1], cur:DATA[n].current})).filter(r=>r.v!=null).sort((a,b)=>b.v-a.v);
-    tip.innerHTML = `<b>Ramp day ${day}</b>` + rows.map(r=>`<div class="r ${r.cur?"cur":"dim"}"><span>${r.cur?`<span class="sw" style="background:${COLOR[r.n]};width:8px;height:8px;margin-right:4px"></span>`:""}${r.n}</span><span>${fmt(r.v)}</span></div>`).join("")
-      + (MED[key][day-1]!=null?`<div class="r dim" style="border-top:1px solid var(--grid);margin-top:3px;padding-top:3px"><span>Past median</span><span>${fmt(MED[key][day-1])}</span></div>`:"");
-    tip.hidden = false;
-    const left = (x(day)/W)*pt.width, tw = tip.offsetWidth;
-    tip.style.left = (left + 14 + tw > pt.width ? left - tw - 14 : left + 14) + "px"; tip.style.top = "8px";
-  }
-  const hit = el.querySelector(`#${id}-hit`);
-  hit.addEventListener("pointermove", show); hit.addEventListener("pointerdown", show);
-  hit.addEventListener("pointerleave", ()=>{ tip.hidden=true; cross.setAttribute("visibility","hidden"); });
-}
-chart("cash", "cash", fmt$, [{v:100000,c:"var(--target)",label:"$100K"},{v:75000,c:"var(--floor)",label:"$75K floor"}]);
-chart("live", "live", v=>String(v));
 
 // Standings table: same-day columns, then full month 1 for past closers.
 const D = Math.min(...CUR.map(n=>DATA[n].cash.length)), LD = Math.min(...CUR.map(n=>DATA[n].live.length));
@@ -188,5 +104,5 @@ document.getElementById("tbl").innerHTML =
       `<td class="gs">${r.fLive}</td><td>${r.fCl}</td><td>${pct(r.fCl,r.fLive)}</td><td>${fmt$(r.fCash)}</td>`}</tr>`).join("") +
   `<tr class="med"><td>Past median</td><td></td><td class="gs">${md("live")}</td><td>${md("cl")}</td><td>${Math.round(mdCtc(["cl","live"])*100)}%</td><td>${fmt$(md("cash"))}</td>
     <td class="gs">${md("fLive")}</td><td>${md("fCl")}</td><td>${Math.round(mdCtc(["fCl","fLive"])*100)}%</td><td>${fmt$(md("fCash"))}</td></tr></tbody>`;
-document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Sorted by the day of the month each closer went live. Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. The charts above include Tyler's day 19 (11/1). CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
+document.getElementById("tbl").insertAdjacentHTML("afterend", `<p class="foot">Sorted by the day of the month each closer went live. Everyone is shown at day ${D}, which is 11/1 for Oliver and 10/31 for Tyler. Live calls = 45-minute discovery calls only: each day's EOD shows are capped at that day's 45-minute bookings in Close, so 15-minute intro (setter) calls aren't counted. Kevin, Daniel and Solomon are capped the same way; Owen, Nick, Julien, Harry and Chris ramped before the Close data I have (it starts 8/1), so theirs are uncapped EOD shows. CTC = closes ÷ live calls. Medians are taken column by column, so the median CTC isn't the median closes ÷ median live calls.<br>* Oliver's 10/29 EOD says 2 closed, but it collected $0, every call it lists ended with a follow-up booked, and the tracker has no close for him, so it's counted as 0 here. Tyler's one close is 10/30, for $15K.</p>`);
 </script>
