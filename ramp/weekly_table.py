@@ -17,6 +17,7 @@ Method (agreed with Sheila 11/2, see docs/decisions.md):
 - A ramping rep's EOD close counts only if cash was collected that day (EOD or tracker); otherwise it's flagged.
 - Rows are sorted by the day of the month each closer went live, so similar start days sit together.
 """
+import csv
 import json
 import statistics
 import subprocess
@@ -52,13 +53,25 @@ def ctc(cl, live):
 class Current:
     """A ramping rep's numbers from the fresh tracker pull and #closer-eod."""
 
-    def __init__(self, snap, people):
+    def __init__(self, snap, people, base=None):
         self.tracker = {}
         for f in snap.glob("closers_*.json"):
             for c in json.loads(f.read_text())["data"]["closers"]:
                 self.tracker[(f.stem[-7:], c["rep_id"])] = c
         self.eod = json.loads((snap / "eod_slack.json").read_text())
         self.people = people
+        # #closer-eod only goes back to 10/8. Older days fall back to the base EOD snapshot (same reports, same numbers).
+        self.base_eod = []
+        if base is not None and (base / "eod.csv").exists():
+            def num(v):
+                try:
+                    return int(float(str(v).replace("$", "").replace(",", "")))
+                except ValueError:
+                    return None
+            for r in csv.DictReader(open(base / "eod.csv")):
+                self.base_eod.append({"name": r["closer_name"].strip(), "date": r["report_date"][:10],
+                                      "showed": num(r["showed"]) or 0, "showed_estimated": False,
+                                      "closed": num(r["closed"]), "cash": num(r["cash_collected"])})
         # 45-min discovery bookings per Close user per ET day (canceled / declined-by-org left out).
         self.booked = {}
         seen = set()
@@ -96,6 +109,9 @@ class Current:
             prefer = r["name"] in full  # Nero's checked report uses the full Slack name
             if day not in days or (prefer and not days[day][1]):
                 days[day] = (r, prefer)
+        for r in self.base_eod:
+            if r["name"] in names and d(r["date"]) not in days:
+                days[d(r["date"])] = (r, False)
         return {k: v[0] for k, v in days.items()}
 
     def measure(self, p, k, upto):
@@ -104,13 +120,15 @@ class Current:
         e = min(add_months(gl, k) - timedelta(days=1), upto)
         eod = self.eod_by_day(p)
         live = closes = 0
-        flagged, missing, estimated = [], [], []
+        flagged, missing, estimated, cash_no_eod = [], [], [], []
         cur = s
         while cur <= e:
             r = eod.get(cur)
             if r is None:
                 if cur.weekday() < 5:
                     missing.append(cur)
+                if self.cash_on(p["tracker_id"], cur) > 0:
+                    cash_no_eod.append((cur, self.cash_on(p["tracker_id"], cur)))
             else:
                 booked = self.booked.get((p["close_user_id"], cur), 0)
                 live += min(r["showed"] or 0, booked)
@@ -124,23 +142,24 @@ class Current:
             cur += timedelta(days=1)
         return {"name": p["name"], "go_live": gl, "live": live, "closes": closes,
                 "cash": self.cash(p["tracker_id"], s, e), "cur": True, "day": (e - s).days + 1,
-                "flagged": flagged, "missing": missing, "estimated": estimated, "end": e}
+                "flagged": flagged, "missing": missing, "estimated": estimated, "end": e,
+                "cash_no_eod": cash_no_eod}
 
 
-def build(run_date):
+def build(run_date, reps=None):
     roster = json.loads((ROOT / "config/roster.json").read_text())
     people = {p["name"]: p for p in roster["people"]}
     cfg = roster["weekly_table"]
     snap = ROOT / "data/snapshots" / run_date
     base = ROOT / "data/snapshots" / cfg["past_snapshot"]
     through = d(run_date) - timedelta(days=1)
-    cur = Current(snap, people)
+    cur = Current(snap, people, base)
     past_data = Data(base)
     cw = json.loads((base / "close_discovery_windows.json").read_text())
 
     # Which ramp month each rep is in as of yesterday.
     groups = {}
-    for n in cfg["reps"]:
+    for n in (reps or cfg["reps"]):
         gl = d(people[n]["go_live"])
         k = next((k for k in range(1, 4) if add_months(gl, k - 1) <= through < add_months(gl, k)), None)
         if k:
@@ -151,7 +170,9 @@ def build(run_date):
         firsts = [cur.measure(people[n], k, through) for n in names]
         day = min(m["day"] for m in firsts)
         rows = [cur.measure(people[n], k, add_months(d(people[n]["go_live"]), k - 1) + timedelta(days=day - 1)) for n in names]
-        past = []
+        for r, f in zip(rows, firsts):
+            r["latest"] = f if f["day"] > day else None
+        past, left = [], []
         for n in PAST:
             if n in names:
                 continue
@@ -159,12 +180,15 @@ def build(run_date):
             full = measure(n, people[n], past_data, cw, k)
             if not at or full["days"] < full["total_days"]:
                 continue  # hasn't finished this month in the base snapshot
+            if not full["live"] and not full["cash"]:
+                left.append(n)  # had already left; an all-zero month would drag the median down
+                continue
             past.append({"name": n, "go_live": d(people[n]["go_live"]), "live": int(at["live"]), "closes": int(at["closes"]),
                          "cash": at["cash"], "cur": False, "f_live": int(full["live"]), "f_closes": int(full["closes"]),
                          "f_cash": full["cash"]})
         allrows = sorted(rows + past, key=lambda r: (r["go_live"].day, r["go_live"]))
         tables.append({"month": k, "day": day, "rows": allrows, "current": rows, "past": past, "through": through,
-                       "people": people})
+                       "people": people, "left": left})
     return tables
 
 
@@ -191,7 +215,7 @@ def table_html(t):
     k, day = t["month"], t["day"]
     trs = []
     for r in t["rows"]:
-        star = " *" if r["cur"] else ""
+        star = " *" if r["cur"] and (r["missing"] or r["estimated"] or r["flagged"] or r["cash_no_eod"]) else ""
         same = (f'<td class="gs">{r["live"]}{star}</td><td>{r["closes"]}</td><td>{ctc(r["closes"], r["live"])}</td>'
                 f'<td>{fmt_money(r["cash"])}</td>')
         if r["cur"]:
@@ -211,18 +235,26 @@ def table_html(t):
              f"Sorted by the day of the month each closer went live. Everyone is shown at day {day} of ramp month {k} ({when}). "
              "CTC = closes ÷ live calls; medians are taken column by column."]
     star = []
-    for r in t["current"]:
+    for r0 in t["current"]:
+        r = r0.get("latest") or r0  # footnote covers everything up to yesterday, not just the shared day
         bits = []
         if r["missing"]:
             bits.append("no EOD on " + ", ".join(f"{x:%-m/%-d}" for x in r["missing"]))
         if r["estimated"]:
             bits.append("shows estimated from the call list on " + ", ".join(f"{x:%-m/%-d}" for x in r["estimated"]))
+        for day_, amt in r["cash_no_eod"]:
+            bits.append(f"{fmt_money(amt)} collected on {day_:%-m/%-d} with no EOD, so any close that day isn't counted")
         for day_, cl in r["flagged"]:
             bits.append(f"EOD on {day_:%-m/%-d} says {cl} closed with no cash collected, not counted")
         if bits:
             star.append(f"{r['name']}: " + "; ".join(bits))
     if star:
         notes.append("* " + ". ".join(star) + ".")
+    if len(t["past"]) < 5:
+        notes.append(f"Only {len(t['past'])} past closers have finished ramp month {k} so far "
+                     f"({', '.join(r['name'] for r in t['past'])}), so the median is thin.")
+    if t.get("left"):
+        notes.append(f"Left out: {', '.join(t['left'])} (no calls or cash in ramp month {k}; already gone).")
     subs = []
     for r in t["current"]:
         pp = t["people"][r["name"]]
@@ -231,6 +263,10 @@ def table_html(t):
             bits.append(f'{pp["commission_pct"] * 100:g}% commission')
         if pp.get("replacement_deadline"):
             bits.append(f'replacement expires {d(pp["replacement_deadline"]):%a %-m/%-d/%y}')
+        if r.get("latest"):
+            f = r["latest"]
+            bits.append(f'today (day {f["day"]}, {f["end"]:%-m/%-d}): {f["live"]} live calls, {f["closes"]} closes, '
+                        f'{ctc(f["closes"], f["live"])} CTC, {fmt_money(f["cash"])}')
         if bits:
             subs.append(f'<p class="sub"><b>{escape(r["name"])}</b>: {" · ".join(bits)}</p>')
     return (f'<section><h2>Ramp month {k} · day {day}</h2>' + "".join(subs) +
@@ -262,8 +298,8 @@ section h2+.sub{margin-top:-2px}section .sub:last-of-type{margin-bottom:10px}
 """
 
 
-def render(run_date):
-    tables = build(run_date)
+def render(run_date, reps=None, prefix="weekly_table"):
+    tables = build(run_date, reps)
     out = ROOT / "outputs" / run_date
     out.mkdir(parents=True, exist_ok=True)
     through = d(run_date) - timedelta(days=1)
@@ -275,21 +311,23 @@ def render(run_date):
             f"<h1>New closer ramp: everyone at the same point</h1><p class='lede'>Data through {through:%a %-m/%-d/%Y}. {escape(sources)}</p>"
             + ("".join(table_html(t) for t in tables) or "<p>No one on the weekly list is in ramp months 1–3.</p>")
             + "</div></body></html>")
-    (out / "weekly_table.html").write_text(html)
+    (out / f"{prefix}.html").write_text(html)
     md = [f"Ramp table, data through {through:%-m/%-d}"]
     for t in tables:
         md.append(f"Month {t['month']}, day {t['day']}: " + "; ".join(
             f"{r['name']} {r['live']} live, {r['closes']} closes, {fmt_money(r['cash'])}" for r in t["current"])
             + f" (past median {num(median_row(t['past'])['live'])} live, {fmt_money(median_row(t['past'])['cash'])})")
-    (out / "weekly_table.md").write_text("\n".join(md) + "\n")
+    (out / f"{prefix}.md").write_text("\n".join(md) + "\n")
     js = ("const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();"
           "const p=await b.newPage({viewport:{width:1024,height:400},deviceScaleFactor:2});"
-          f"await p.goto('file://{out / 'weekly_table.html'}');await p.waitForTimeout(600);"
-          f"await p.locator('.wrap').screenshot({{path:'{out / 'weekly_table.png'}'}});await b.close();}})();")
+          f"await p.goto('file://{out / f"{prefix}.html"}');await p.waitForTimeout(600);"
+          f"await p.locator('.wrap').screenshot({{path:'{out / f"{prefix}.png"}'}});await b.close();}})();")
     subprocess.run(["node", "-e", js], check=True)
     print("\n".join(md))
-    return out / "weekly_table.png"
+    return out / f"{prefix}.png"
 
 
 if __name__ == "__main__":
-    print(render(sys.argv[1]))
+    # python3 -m ramp.weekly_table <date> [Rep1,Rep2 <output_prefix>]   (defaults: weekly_table.reps, weekly_table)
+    reps = sys.argv[2].split(",") if len(sys.argv) > 2 else None
+    print(render(sys.argv[1], reps, sys.argv[3] if len(sys.argv) > 3 else "weekly_table"))

@@ -16,7 +16,8 @@
    "cohort": "kds",
    "commission_pct": 0.08,
    "replacement_deadline": null,
-   "referral_payout_status": "Expired - Paid"
+   "referral_payout_status": "Expired - Paid",
+   "close_user_id": "user_pjOhfDFMYSNFDKwgLEMHYOP1a9h8HjfwjSWekJnhx7j"
   },
   {
    "name": "Daniel",
@@ -50,7 +51,8 @@
    "cohort": "kds",
    "commission_pct": 0.08,
    "replacement_deadline": null,
-   "referral_payout_status": "Expired - Paid"
+   "referral_payout_status": "Expired - Paid",
+   "close_user_id": "user_FscBL0yyfYEgqQWD8ZBxvNkyrVfmIl2D6dKuLP2TPoi"
   },
   {
    "name": "Oliver",
