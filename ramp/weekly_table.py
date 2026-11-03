@@ -271,7 +271,7 @@ def table_html(t):
             subs.append(f'<p class="sub"><b>{escape(r["name"])}</b>: {" · ".join(bits)}</p>')
     who = f'{t["current"][0]["name"]} · ' if len(t["current"]) == 1 else ""
     return (f'<section><h2>{who}Ramp month {k} · day {day}</h2>' + "".join(subs) +
-            f'<table><thead><tr><th></th><th></th><th></th><th colspan="4" class="grp">Month {k}, day {day} (now)</th><th colspan="4" class="grp">Full month {k}</th></tr>'
+            f'<table><thead><tr><th></th><th></th><th></th><th colspan="4" class="grp">Day {day} of month {k}</th><th colspan="4" class="grp">Full month {k}</th></tr>'
             '<tr><th>Closer</th><th>Went live</th><th>Month end</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
             '<th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead>'
             f'<tbody>{"".join(trs)}</tbody></table>' + "".join(f'<p class="foot">{escape(n)}</p>' for n in notes) + "</section>")
