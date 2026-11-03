@@ -231,7 +231,7 @@ def table_html(t):
                f'<td>{round(m["ctc"] * 100)}%</td><td>{fmt_money(m["cash"])}</td><td class="gs">{num(m["f_live"])}</td>'
                f'<td>{num(m["f_closes"])}</td><td>{round(m["f_ctc"] * 100)}%</td><td>{fmt_money(m["f_cash"])}</td></tr>')
     when = ", ".join(f'{r["end"]:%-m/%-d} for {r["name"]}' for r in t["current"])
-    notes = [f"Month end = the day of ramp month {k} that the last day of the calendar month fell on. "
+    notes = [f"Month end falls on = the day of their ramp month {k} that the calendar month ended on (e.g. day 26 means the 31st was day 26 of their ramp month). "
              f"Sorted by the day of the month each closer went live. Everyone is shown at day {day} of ramp month {k} ({when}). "
              "CTC = closes ÷ live calls; medians are taken column by column."]
     star = []
@@ -272,7 +272,7 @@ def table_html(t):
     who = f'{t["current"][0]["name"]} · ' if len(t["current"]) == 1 else ""
     return (f'<section><h2>{who}Ramp month {k} · day {day}</h2>' + "".join(subs) +
             f'<table><thead><tr><th></th><th></th><th></th><th colspan="4" class="grp">Day {day} of month {k}</th><th colspan="4" class="grp">Full month {k}</th></tr>'
-            '<tr><th>Closer</th><th>Went live</th><th>Month end</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
+            '<tr><th>Closer</th><th>Went live</th><th>Month end falls on</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
             '<th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead>'
             f'<tbody>{"".join(trs)}</tbody></table>' + "".join(f'<p class="foot">{escape(n)}</p>' for n in notes) + "</section>")
 
