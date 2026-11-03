@@ -265,7 +265,7 @@ def table_html(t):
             bits.append(f'replacement expires {d(pp["replacement_deadline"]):%a %-m/%-d/%y}')
         if r.get("latest"):
             f = r["latest"]
-            bits.append(f'today (day {f["day"]}, {f["end"]:%-m/%-d}): {f["live"]} live calls, {f["closes"]} closes, '
+            bits.append(f'today (day {f["day"]}, {f["end"]:%-m/%-d}): {f["live"]} live calls, {f["closes"]} close{"" if f["closes"] == 1 else "s"}, '
                         f'{ctc(f["closes"], f["live"])} CTC, {fmt_money(f["cash"])}')
         if bits:
             subs.append(f'<p class="sub"><b>{escape(r["name"])}</b>: {" · ".join(bits)}</p>')
@@ -316,7 +316,7 @@ def render(run_date, reps=None, prefix="weekly_table", separate=False):
     md = [f"Ramp table, data through {through:%-m/%-d}"]
     for t in tables:
         md.append(f"Month {t['month']}, day {t['day']}: " + "; ".join(
-            f"{r['name']} {r['live']} live, {r['closes']} closes, {fmt_money(r['cash'])}" for r in t["current"])
+            f"{r['name']} {r['live']} live, {r['closes']} close{"" if r['closes'] == 1 else "s"}, {fmt_money(r['cash'])}" for r in t["current"])
             + f" (past median {num(median_row(t['past'])['live'])} live, {fmt_money(median_row(t['past'])['cash'])})")
     (out / f"{prefix}.md").write_text("\n".join(md) + "\n")
     js = ("const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();"
