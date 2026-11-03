@@ -168,6 +168,13 @@ def build(run_date):
     return tables
 
 
+def month_end_day(go_live, k):
+    """Which day of ramp month k the calendar month's last day falls on (cash tends to land at calendar month end)."""
+    s = add_months(go_live, k - 1)
+    nxt = date(s.year + (s.month == 12), s.month % 12 + 1, 1)
+    return (nxt - s).days
+
+
 def median_row(past):
     med = lambda xs: statistics.median(xs) if xs else 0
     m = {key: med([r[key] for r in past]) for key in ("live", "closes", "cash", "f_live", "f_closes", "f_cash")}
@@ -193,13 +200,15 @@ def table_html(t):
             full = (f'<td class="gs">{r["f_live"]}</td><td>{r["f_closes"]}</td><td>{ctc(r["f_closes"], r["f_live"])}</td>'
                     f'<td>{fmt_money(r["f_cash"])}</td>')
         cls = ' class="cur"' if r["cur"] else ""
-        trs.append(f'<tr{cls}><td>{escape(r["name"])}</td><td>{r["go_live"]:%m/%d/%y}</td>{same}{full}</tr>')
+        trs.append(f'<tr{cls}><td>{escape(r["name"])}</td><td>{r["go_live"]:%m/%d/%y}</td>'
+                   f'<td>day {month_end_day(r["go_live"], k)}</td>{same}{full}</tr>')
     m = median_row(t["past"])
-    trs.append(f'<tr class="med"><td>Past median</td><td></td><td class="gs">{num(m["live"])}</td><td>{num(m["closes"])}</td>'
+    trs.append(f'<tr class="med"><td>Past median</td><td></td><td></td><td class="gs">{num(m["live"])}</td><td>{num(m["closes"])}</td>'
                f'<td>{round(m["ctc"] * 100)}%</td><td>{fmt_money(m["cash"])}</td><td class="gs">{num(m["f_live"])}</td>'
                f'<td>{num(m["f_closes"])}</td><td>{round(m["f_ctc"] * 100)}%</td><td>{fmt_money(m["f_cash"])}</td></tr>')
     when = ", ".join(f'{r["end"]:%-m/%-d} for {r["name"]}' for r in t["current"])
-    notes = [f"Sorted by the day of the month each closer went live. Everyone is shown at day {day} of ramp month {k} ({when}). "
+    notes = [f"Month end = the day of ramp month {k} that the last day of the calendar month fell on. "
+             f"Sorted by the day of the month each closer went live. Everyone is shown at day {day} of ramp month {k} ({when}). "
              "CTC = closes ÷ live calls; medians are taken column by column."]
     star = []
     for r in t["current"]:
@@ -225,8 +234,8 @@ def table_html(t):
         if bits:
             subs.append(f'<p class="sub"><b>{escape(r["name"])}</b>: {" · ".join(bits)}</p>')
     return (f'<section><h2>Ramp month {k} · day {day}</h2>' + "".join(subs) +
-            f'<table><thead><tr><th></th><th></th><th colspan="4" class="grp">By day {day}</th><th colspan="4" class="grp">Full month {k}</th></tr>'
-            '<tr><th>Closer</th><th>Went live</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
+            f'<table><thead><tr><th></th><th></th><th></th><th colspan="4" class="grp">By day {day}</th><th colspan="4" class="grp">Full month {k}</th></tr>'
+            '<tr><th>Closer</th><th>Went live</th><th>Month end</th><th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th>'
             '<th class="gs">Live calls</th><th>Closes</th><th>CTC</th><th>Cash</th></tr></thead>'
             f'<tbody>{"".join(trs)}</tbody></table>' + "".join(f'<p class="foot">{escape(n)}</p>' for n in notes) + "</section>")
 
@@ -234,7 +243,7 @@ def table_html(t):
 CSS = """
 :root{--ink:#111412;--ink2:#4d5450;--muted:#848b86;--grid:#e3e6e2;--bg:#f7f8f6;--card:#fff;--hl:#eef3fb}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);font:14px/1.4 'IBM Plex Sans',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:var(--ink)}
-.wrap{width:900px;padding:22px}
+.wrap{width:980px;padding:22px}
 h1{font:800 20px/1.2 Archivo,-apple-system,'Segoe UI',sans-serif;margin:0 0 2px}.lede{color:var(--ink2);margin:0 0 14px}
 section{background:var(--card);border:1px solid var(--grid);border-radius:10px;padding:14px 16px;margin-bottom:14px}
 h2{font:700 15px/1.2 Archivo,-apple-system,'Segoe UI',sans-serif;margin:0 0 8px}
@@ -274,7 +283,7 @@ def render(run_date):
             + f" (past median {num(median_row(t['past'])['live'])} live, {fmt_money(median_row(t['past'])['cash'])})")
     (out / "weekly_table.md").write_text("\n".join(md) + "\n")
     js = ("const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();"
-          "const p=await b.newPage({viewport:{width:944,height:400},deviceScaleFactor:2});"
+          "const p=await b.newPage({viewport:{width:1024,height:400},deviceScaleFactor:2});"
           f"await p.goto('file://{out / 'weekly_table.html'}');await p.waitForTimeout(600);"
           f"await p.locator('.wrap').screenshot({{path:'{out / 'weekly_table.png'}'}});await b.close();}})();")
     subprocess.run(["node", "-e", js], check=True)
