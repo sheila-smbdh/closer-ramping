@@ -16,4 +16,6 @@ Steps:
 3. `python3 -m ramp.sheets data/snapshots/$DATE <folder>/eod.xlsx <folder>/sales.xlsx`. It prints the row counts, and writes `eod_tracker.json` and `sales_inputs.json`.
 4. If either download fails or a count is 0, stop and say so. Don't build from old data.
 
+If `python3` can't import `openpyxl` (on some routine machines the default `python3` is 3.11 without it), run every `python3 -m ramp...` step with `python3.13` instead.
+
 Never edit either sheet.
