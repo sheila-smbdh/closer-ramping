@@ -4,7 +4,9 @@ Usage:
   python3 -m ramp.milestones <YYYY-MM-DD>          sweep; writes outputs/<date>/milestones.md and milestones.json
   python3 -m ramp.milestones <YYYY-MM-DD> --mark   after the Slack post went out: log what was sent
 
-Reads config/roster.json (dates, replacement deadlines), config/feedback.json (Jay's open items),
+Reads data/snapshots/<date>/roster_sheet.json (the New Hire Tracker's Roster tab, from ramp.roster_sheet: who is
+ramping, go-live dates, status, replacement deadlines; required, the sweep stops without it), config/roster.json
+(lookup keys only: EOD and Sales Tracker names), config/feedback.json (Jay's open items),
 data/milestones_sent.json (what was already posted) and, if present, data/snapshots/<date>/eod_tracker.json and
 sales_inputs.json (numbers through yesterday, from ramp.sheets). Without the snapshot the reminders still go out,
 just without numbers.
@@ -57,10 +59,10 @@ def fwd_to_weekday(day):
     return day
 
 
-def ramping(roster):
-    """Closers on the calendar who aren't out: they have a go-live date and an active or watch status."""
-    for p in roster["people"]:
-        if p.get("comparison_only") or not p.get("go_live"):
+def ramping(people):
+    """Closers on the calendar who aren't out: they have a go-live date and the Roster tab doesn't say Out."""
+    for p in people:
+        if not p.get("go_live"):
             continue
         if p.get("status") not in ("active", "watch") or p.get("sheet_status") == "Out":
             continue
@@ -119,11 +121,11 @@ def items_text(items):
     return "; ".join(f"{f['issue']} ({f['category'].lower()}, {d(f['date']):%-m/%-d})" for f in items)
 
 
-def events(today, roster, feedback, nums):
+def events(today, people, feedback, nums):
     """Every reminder group for every ramping closer: (group, [(stage, due, valid_until)], render(stage))."""
     through = today - timedelta(days=1)
     out = []
-    for p in ramping(roster):
+    for p in ramping(people):
         name, gl = p["name"], d(p["go_live"])
         k_now = next((k for k in range(1, 4) if add_months(gl, k - 1) <= through < add_months(gl, k)), None)
         cur = nums.month(p, k_now, through) if k_now else None
@@ -230,12 +232,17 @@ def events(today, roster, feedback, nums):
 
 def sweep(today):
     roster = json.loads((ROOT / "config/roster.json").read_text())
+    snap = ROOT / "data/snapshots" / today.isoformat()
+    if not (snap / "roster_sheet.json").exists():
+        raise SystemExit("STOP: no roster_sheet.json for today. Read the New Hire Tracker Roster tab first "
+                         "(python3 -m ramp.roster_sheet). Post nothing.")
+    from ramp.roster_sheet import merged
+    people = merged(snap, roster)
     feedback = {k: v for k, v in json.loads((ROOT / "config/feedback.json").read_text()).items() if not k.startswith("_")}
     sent = set(json.loads(SENT.read_text())) if SENT.exists() else set()
-    snap = ROOT / "data/snapshots" / today.isoformat()
     nums = Numbers(snap)
     due, mark = [], []
-    for group, stages, render in events(today, roster, feedback, nums):
+    for group, stages, render in events(today, people, feedback, nums):
         live = [(st, du, vu) for st, du, vu in stages if du <= today <= vu and f"{group}:{st}" not in sent]
         if not live:
             continue
@@ -262,13 +269,12 @@ def message(today, due, have_numbers):
         out += ["", "_Numbers left out: the EOD Tracker and Sales Tracker couldn't be read this morning._"]
     else:
         out += ["", "_Numbers through yesterday from the EOD Tracker (calls) and Sales Tracker (closes, cash). "
-                     "Dates from config/roster.json._"]
+                     "Dates from the New Hire Tracker Roster tab._"]
     return "\n".join(out)
 
 
 def main():
     today = d(sys.argv[1])
-    due, mark, have = sweep(today)
     outdir = ROOT / "outputs" / today.isoformat()
     if "--mark" in sys.argv:
         sent = set(json.loads(SENT.read_text())) if SENT.exists() else set()
@@ -276,6 +282,7 @@ def main():
         SENT.write_text(json.dumps(sorted(sent), indent=1) + "\n")
         print(f"logged {len(sent)} sent reminders")
         return
+    due, mark, have = sweep(today)
     outdir.mkdir(parents=True, exist_ok=True)
     text = message(today, due, have)
     (outdir / "milestones.md").write_text(text + ("\n" if text else ""))
