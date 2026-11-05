@@ -5,6 +5,7 @@ Both the Saturday ramp table and the daily dashboard read two Google Sheets, rea
 | Sheet | File id | Used for |
 |---|---|---|
 | EOD Tracker (Sheet1) | `11PnemLh8wDT-baqbYBcW3cw0zv4vl82J7NumHTh7dCc` | scheduled, showed, no-show, cancelled, rescheduled, offers, as each closer reported them |
+| New Hire Tracker (Roster) | `1I2HbtdeFMC_rszI9BJnm3hozt5XQDkyFJ0XP481Kp3Q` | who is ramping, go-live dates, status, replacement deadline (daily milestone sweep; `python3 -m ramp.roster_sheet`) |
 | Sales Tracker 2026 (Inputs) | `1Y7LCecej4lj2XNfVw0b_9L0KAp7Qj8WKeYM711UGsp0` | days with no EOD (Sched. calls, Live calls, Offers), closes (Close 1) and cash |
 
 Sheila, 11/3: the EOD Tracker is accurate for scheduled and live calls, historical dates included. This is also how the closer-scorecard repo counts them.
