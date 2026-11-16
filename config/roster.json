@@ -163,7 +163,8 @@
    "commission_pct": 0.08,
    "replacement_deadline": null,
    "referral_payout_status": "Expired - Paid",
-   "sheet_status": "Active"
+   "sheet_status": "Active",
+   "close_user_id": "user_f3vkQZe4xJvRsPV9L6cU1UOHk7nwxStq94aMqJYLqzm"
   },
   {
    "name": "Nick",
@@ -179,7 +180,8 @@
    "commission_pct": 0.08,
    "replacement_deadline": null,
    "referral_payout_status": "Expired - Paid",
-   "sheet_status": "Active"
+   "sheet_status": "Active",
+   "close_user_id": "user_e5ftkzIEvfPsrJiQL5iDkECWGn6zvgVRNNPP7736d75"
   },
   {
    "name": "Julien",
@@ -195,7 +197,8 @@
    "commission_pct": null,
    "replacement_deadline": null,
    "referral_payout_status": "Expired - Paid",
-   "sheet_status": "Out"
+   "sheet_status": "Out",
+   "close_user_id": "user_eE1A7LS7qtadfjtL4lWfnts3x6RBYBToJNRb5pT1Z23"
   },
   {
    "name": "Chris",
@@ -210,7 +213,8 @@
    "commission_pct": null,
    "replacement_deadline": null,
    "referral_payout_status": null,
-   "sheet_status": "Out"
+   "sheet_status": "Out",
+   "close_user_id": "user_rWfa75vFfzRRAVWIaixyDbaQDY9QQqq77htyXUNEcR1"
   },
   {
    "name": "Avery",

@@ -166,6 +166,7 @@ class SheetCurrent:
                 "sched": m["sched"], "cash": m["cash"], "cur": True, "day": (e - s).days + 1, "end": e,
                 "days": (e - s).days + 1, "total_days": (end - s).days + 1,
                 "filled": m["filled_days"], "estimated": m["inferred_days"],
+                "intro_removed": m["intro_removed"], "intro_days": m["intro_days"],
                 "missing": [], "flagged": [], "cash_no_eod": []}
 
 
@@ -227,9 +228,9 @@ def build(run_date, reps=None, separate=False):
                 continue
             past.append({"name": n, "go_live": d(people[n]["go_live"]), "live": int(at["live"]), "closes": int(at["closes"]),
                          "cash": at["cash"], "cur": False, "f_live": int(full["live"]), "f_closes": int(full["closes"]),
-                         "f_cash": full["cash"]})
+                         "f_cash": full["cash"], "intro_removed": at["intro_removed"]})
         allrows = sorted(rows + past, key=lambda r: (r["go_live"].day, r["go_live"]))
-        tables.append({"month": k, "day": day, "rows": allrows, "current": rows, "past": past, "through": through,
+        tables.append({"intro_rule": cur.sh.meetings is not None, "month": k, "day": day, "rows": allrows, "current": rows, "past": past, "through": through,
                        "people": people, "left": left, "final": final})
     return tables
 
@@ -281,6 +282,11 @@ def table_html(t):
              + (f"Ramp month {k} is complete ({when}); everyone is shown on their full month {k}. " if t.get("final")
                 else f"Everyone is shown at day {day} of ramp month {k} ({when}). ") +
              "CTC = closes ÷ live calls; medians are taken column by column."]
+    cut = [r for r in t["rows"] if r.get("intro_removed")]
+    if t.get("intro_rule"):
+        notes.append("Live calls leave out Intro (setter) calls, going by the calendar event name in Close"
+                     + (": " + ", ".join(f'{r["name"]} {r["intro_removed"]}' for r in cut) + " taken out." if cut
+                        else "; none in this window."))
     star = []
     for r0 in t["current"]:
         r = r0.get("latest") or r0  # footnote covers everything up to yesterday, not just the shared day

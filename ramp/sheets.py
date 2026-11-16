@@ -10,6 +10,7 @@ Usage: python3 -m ramp.sheets <snapshot_dir> <eod.xlsx> <sales.xlsx>
 Writes <snapshot_dir>/eod_tracker.json and <snapshot_dir>/sales_inputs.json (only the columns used here).
 """
 import json
+import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -35,13 +36,18 @@ def _day(v):
         return None
 
 
+def _cell(r, i):
+    return r[i] if i < len(r) else None
+
+
 def export(snap, eod_xlsx, sales_xlsx):
     import openpyxl
     wb = openpyxl.load_workbook(eod_xlsx, read_only=True, data_only=True)
     rows = list(wb["Sheet1"].iter_rows(values_only=True))
     hdr = list(rows[0])
     ix = {h: hdr.index(h) for h in ("report_date", "closer_name", "scheduled", "showed", "no_showed", "cancelled",
-                                     "rescheduled", "offers_made", "closed", "cash_collected", "slack_posted_at_utc")}
+                                     "rescheduled", "offers_made", "closed", "cash_collected", "slack_posted_at_utc",
+                                     "showed_leads")}
     eod = []
     for r in rows[1:]:
         day, name = _day(r[ix["report_date"]]), r[ix["closer_name"]]
@@ -50,7 +56,9 @@ def export(snap, eod_xlsx, sales_xlsx):
         eod.append({"date": day, "name": str(name).strip(),
                     **{k: _num(r[ix[k]]) for k in ("scheduled", "showed", "no_showed", "cancelled", "rescheduled",
                                                    "offers_made", "closed", "cash_collected")},
-                    "posted": str(r[ix["slack_posted_at_utc"]] or "")})
+                    "posted": str(r[ix["slack_posted_at_utc"]] or ""),
+                    # Close lead ids of the calls that showed (listed on EODs from mid-September on).
+                    "showed_lead_ids": re.findall(r"lead_[A-Za-z0-9]+", str(_cell(r, ix["showed_leads"]) or ""))})
     wb = openpyxl.load_workbook(sales_xlsx, read_only=True, data_only=True)
     rows = list(wb["Inputs"].iter_rows(values_only=True))
     hdr = list(rows[0])
@@ -76,6 +84,37 @@ class Sheets:
         snap = Path(snap)
         self.eod = json.loads((snap / "eod_tracker.json").read_text())
         self.st = json.loads((snap / "sales_inputs.json").read_text())
+        # Close calendar meetings (ramp.close_meetings), for the Intro-call rule. Without the file, no rule.
+        self.meetings = None
+        if (snap / "close_meetings.json").exists():
+            self.meetings = {}
+            for m in json.loads((snap / "close_meetings.json").read_text()):
+                if m["status"] == "completed":
+                    self.meetings.setdefault((m["user_id"], m["date"]), []).append(m)
+
+    def _intro_cut(self, p, day, reported, lead_ids):
+        """Live calls left after taking out Intro (setter) calls (Sheila, 11/16).
+
+        Only days with an Intro call held in Close change. On those days:
+        1. Shows the EOD lists by lead that match an Intro call held that day (or the day before or after) come off.
+        2. What's left is capped at the non-Intro meetings (Discovery and follow-ups) held that day, which catches
+           Intro shows the EOD didn't list by lead and Sales Tracker days.
+        """
+        if self.meetings is None or not p.get("close_user_id"):
+            return reported
+        uid = p["close_user_id"]
+        held = self.meetings.get((uid, day.isoformat()), [])
+        intro = [m for m in held if m["type"] == "intro"]
+        if not intro:
+            return reported
+        near = held + self.meetings.get((uid, (day - timedelta(days=1)).isoformat()), []) \
+            + self.meetings.get((uid, (day + timedelta(days=1)).isoformat()), [])
+        left = reported
+        for lid in lead_ids or []:
+            types = {m["type"] for m in near if m["lead_id"] == lid}
+            if "intro" in types and "discovery" not in types:
+                left -= 1
+        return max(0, min(left, len(held) - len(intro)))
 
     def _eod_days(self, p):
         names = set(p.get("eod_names", [])) | {p["name"]}
@@ -102,7 +141,8 @@ class Sheets:
         closes and cash from the Sales Tracker."""
         eod, st = self._eod_days(p), self._st_days(p)
         out = {"sched": 0, "live": 0, "offers": 0, "closes": 0, "cash": 0,
-               "eod_days": 0, "filled_days": [], "inferred_days": [], "resched_removed": 0}
+               "eod_days": 0, "filled_days": [], "inferred_days": [], "resched_removed": 0,
+               "intro_removed": 0, "intro_days": []}
         cur = s
         while cur <= e:
             k = cur.isoformat()
@@ -124,19 +164,27 @@ class Sheets:
                 if adj != sched:
                     out["resched_removed"] += sched - adj
                 out["sched"] += adj
-                out["live"] += showed
+                kept = self._intro_cut(p, cur, showed, r.get("showed_lead_ids"))
+                if kept != showed:
+                    out["intro_removed"] += showed - kept
+                    out["intro_days"].append(cur)
+                out["live"] += kept
                 out["offers"] += r["offers_made"] or 0
                 out["eod_days"] += 1
             elif f is not None and (f["sched"] or f["live"]):
                 out["sched"] += f["sched"]
-                out["live"] += f["live"]
+                kept = self._intro_cut(p, cur, f["live"], None)
+                if kept != f["live"]:
+                    out["intro_removed"] += f["live"] - kept
+                    out["intro_days"].append(cur)
+                out["live"] += kept
                 out["offers"] += f["offers"]
                 out["filled_days"].append(cur)
             if f is not None:
                 out["closes"] += f["closes"]
                 out["cash"] += f["cash"]
             cur += timedelta(days=1)
-        for k in ("sched", "live", "offers", "closes"):
+        for k in ("sched", "live", "offers", "closes", "intro_removed"):
             out[k] = int(out[k])
         return out
 
